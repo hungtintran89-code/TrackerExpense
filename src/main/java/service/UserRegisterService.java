@@ -11,21 +11,37 @@ public class UserRegisterService {
 
 
     public static User register (HttpExchange httpExchange ){
+        System.out.println(">>> userRegisterController");
         User user = TranferController.fromString( httpExchange.getRequestBody() , User.class) ;
-        if(  user.getName() == null || user.getEmail() == null || user.getPassword() == null ){
+        if (user == null) {
+            System.out.println("user is NULL");
+            return null;
+        }
+        if( user.getName() == null ){
+            System.out.println("Name is NULL");
+            return null ;
+        }
+        if( user.getEmail() == null ){
+            System.out.println("Email is NULL");
+            return null;
+        }
+        if( user.getPassword() == null ){
+            System.out.println("Password is NULL");
             return null;
         }
         if( user.getPassword().length() < 6 ) {
+            System.out.println("Password short");
             return null ;
         }
         if(UserRepository.findByEmail(user.getEmail()) != null ){
+            System.out.println("Email exists");
             return null ;
         }
         if( UserRepository.findByName(user.getName()) != null ){
+            System.out.println("Name exists");
             return null ;
         }
         String passwordhash = BCrypt.hashpw(user.getPassword() , BCrypt.gensalt(12)) ;
-
         return new User(user.getName() , user.getEmail() , passwordhash) ;
     }
 

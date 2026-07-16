@@ -12,17 +12,20 @@ import org.springframework.stereotype.Controller;
 
 @Controller
 public class UserController {
-
     static DBConnection connection = new DBConnection();
-
     public Response userRegisterController(HttpExchange httpExchange) {
         User u = UserRegisterService.register(httpExchange);
-        if (u == null || !UserRepository.insert(u)) {
+        if (u == null ){
             return new Response("Register fail!", 400);
-        } else {
+        }
+        if( !UserRepository.insert(u)){
+            return new Response("Register fail!", 400);
+        }
+        else {
             return new Response("Register successfull!", 200);
         }
     }
+
 
     public Response userLoginController(HttpExchange httpExchange) {
         String checkPassword = UserLoginService.login(httpExchange);
@@ -32,11 +35,9 @@ public class UserController {
         }
         return new Response(String.valueOf(checkPassword), 200);
     }
-
     public Response changePassword(HttpExchange httpExchange, User user) {
         return UserUpdateService.changePassword(httpExchange, user);
     }
-
     public Response changeEmail(HttpExchange httpExchange, User user) {
         return UserUpdateService.changeEmail(httpExchange, user);
     }

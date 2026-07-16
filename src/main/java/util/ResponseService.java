@@ -10,7 +10,10 @@ import dto.Response ;
 public class ResponseService {
 
     public void SendResponse(HttpExchange exchange , Response response) throws IOException {
-        exchange.getResponseHeaders().add("Content-Type", "application/json") ;
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "http://localhost:5173");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         byte[] b = response.getResponse().getBytes(StandardCharsets.UTF_8) ;
 
         exchange.sendResponseHeaders( response.getStatus() , b.length );
