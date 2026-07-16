@@ -19,6 +19,9 @@ public class ExpenseTrackerApplication {
 
     public static void main(String[] args) {
         try {
+            // Automatically initialize database schema if tables don't exist
+            database.DatabaseInitializer.initialize();
+
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
             server.createContext("/Health", (httpExchange) -> {
