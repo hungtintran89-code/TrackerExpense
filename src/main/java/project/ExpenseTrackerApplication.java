@@ -59,6 +59,18 @@ public class ExpenseTrackerApplication {
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
+                    } else if (lastSegment.equals("otp-login-request")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, userController.requestPasswordlessOtp(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
+                    } else if (lastSegment.equals("otp-login-confirm")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, userController.confirmPasswordlessOtp(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
                     } else if (lastSegment.equals("forgot-password")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
                             responseService.SendResponse(httpExchange, service.PasswordResetService.forgotPassword(httpExchange));

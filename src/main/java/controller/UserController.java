@@ -52,6 +52,14 @@ public class UserController {
         return new Response(token, 200);
     }
 
+    public Response requestPasswordlessOtp(HttpExchange httpExchange) {
+        return service.PasswordlessOtpService.requestOtp(httpExchange);
+    }
+
+    public Response confirmPasswordlessOtp(HttpExchange httpExchange) {
+        return service.PasswordlessOtpService.confirmOtp(httpExchange);
+    }
+
     public Response changePassword(HttpExchange httpExchange, User user) {
         return UserUpdateService.changePassword(httpExchange, user);
     }

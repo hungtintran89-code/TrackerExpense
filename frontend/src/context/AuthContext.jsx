@@ -212,6 +212,48 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Passwordless OTP Login Request (Step 1)
+  const otpLoginRequest = async (email) => {
+    try {
+      const response = await api.post('/user/otp-login-request', { email })
+      return { success: true, message: response.data?.message || 'OTP code sent.', otp: response.data?.otp }
+    } catch (error) {
+      console.error('OTP login request error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Failed to request OTP login.'
+      }
+    }
+  }
+
+  // Passwordless OTP Login Confirm (Step 2)
+  const otpLoginConfirm = async (email, otp) => {
+    try {
+      const response = await api.post('/user/otp-login-confirm', { email, otp })
+      const data = response.data
+
+      if (typeof data === 'string' && data.startsWith('eyJ')) {
+        const decoded = decodeToken(data)
+        if (decoded) {
+          localStorage.setItem('token', data)
+          setToken(data)
+          setUser({ id: decoded.id, name: decoded.name, email: decoded.email })
+          return { success: true }
+        }
+      }
+      return {
+        success: false,
+        message: typeof data === 'string' ? data : 'Authentication failed.'
+      }
+    } catch (error) {
+      console.error('OTP login confirm error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Failed to verify OTP.'
+      }
+    }
+  }
+
   // Register handler
   const register = async (name, email, password) => {
     try {
@@ -257,7 +299,8 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, token, loading, login, googleLogin, register, registerRequest, registerConfirm, logout, darkMode, toggleDarkMode, updateToken,
+      user, token, loading, login, googleLogin, register, registerRequest, registerConfirm,
+      otpLoginRequest, otpLoginConfirm, logout, darkMode, toggleDarkMode, updateToken,
       wallets, setWallets, pendingInvitations, setPendingInvitations,
       selectedWalletId, setSelectedWalletId, fetchWallets, fetchInvitations
     }}>
