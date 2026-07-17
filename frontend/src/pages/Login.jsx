@@ -42,17 +42,21 @@ export default function Login() {
   // Handle Google Login request (Simulated Account Chooser step)
   const handleGoogleLoginSubmit = async (e) => {
     e.preventDefault()
-    if (!googleEmail.trim()) {
+    const targetEmail = googleEmail.trim().toLowerCase()
+    if (!targetEmail) {
       showToast('Please enter your Google email.', 'warning')
       return
     }
-    if (!googleEmail.trim().endsWith('@gmail.com')) {
+    if (!targetEmail.endsWith('@gmail.com')) {
       showToast('Please enter a valid Gmail address (@gmail.com).', 'warning')
       return
     }
 
+    // Check if the account is already saved/authorized on this device
+    const isSaved = savedAccounts.some(acc => acc.email === targetEmail)
+
     setGoogleLoading(true)
-    const result = await googleLogin(googleEmail.trim())
+    const result = await googleLogin(targetEmail, null, isSaved)
     setGoogleLoading(false)
 
     if (result.success) {
@@ -61,15 +65,19 @@ export default function Login() {
         setShowGoogleModal(false)
 
         // Save account to local history
-        const updatedAccounts = [...savedAccounts.filter(a => a.email !== googleEmail.trim()), { email: googleEmail.trim(), name: result.name }]
+        const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: result.name }]
         localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
         setSavedAccounts(updatedAccounts)
 
         navigate('/dashboard')
+      } else if (result.status === 'VERIFICATION_REQUIRED') {
+        showToast('Tài khoản đã đăng ký. Vui lòng xác minh mật khẩu để ủy quyền thiết bị.', 'info')
+        setGooglePassword('')
+        setGoogleStep(3) // Move to password verification screen
       } else if (result.status === 'ONBOARDING_REQUIRED') {
         showToast('Google account verified. Please complete your profile setup.', 'info')
         setOnboardingTicket(result.onboarding_ticket)
-        setGoogleName(googleEmail.split('@')[0])
+        setGoogleName(targetEmail.split('@')[0])
         setGooglePassword('')
         setGoogleStep(2) // Move to onboarding screen
       }
@@ -78,9 +86,38 @@ export default function Login() {
     }
   }
 
+  // Handle Google Password verification for unauthorized devices
+  const handleGoogleVerifyPasswordSubmit = async (e) => {
+    e.preventDefault()
+    const targetEmail = googleEmail.trim().toLowerCase()
+    if (!googlePassword) {
+      showToast('Vui lòng nhập mật khẩu tài khoản.', 'warning')
+      return
+    }
+
+    setGoogleLoading(true)
+    const result = await googleLogin(targetEmail, googlePassword, false)
+    setGoogleLoading(false)
+
+    if (result.success && result.status === 'SUCCESS') {
+      showToast('Xác minh thành công và đã ủy quyền thiết bị!', 'success')
+      setShowGoogleModal(false)
+
+      // Save account to local history
+      const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: result.name }]
+      localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
+      setSavedAccounts(updatedAccounts)
+
+      navigate('/dashboard')
+    } else {
+      showToast(result.message || 'Mật khẩu xác minh không chính xác.', 'error')
+    }
+  }
+
   // Handle Google Onboarding finalize registration
   const handleGoogleFinalizeSubmit = async (e) => {
     e.preventDefault()
+    const targetEmail = googleEmail.trim().toLowerCase()
     if (!googleName.trim() || googlePassword.length < 6) {
       showToast('Name is required, and password must be at least 6 characters.', 'warning')
       return
@@ -95,7 +132,7 @@ export default function Login() {
       setShowGoogleModal(false)
 
       // Save account to local history
-      const updatedAccounts = [...savedAccounts.filter(a => a.email !== googleEmail.trim()), { email: googleEmail.trim(), name: googleName.trim() }]
+      const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: googleName.trim() }]
       localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
       setSavedAccounts(updatedAccounts)
 
@@ -105,6 +142,7 @@ export default function Login() {
       showToast(result.message, 'error')
     }
   }
+
 
   // Handle Forgot Password OTP request
   const handleForgotPasswordSubmit = async (e) => {
@@ -403,7 +441,7 @@ export default function Login() {
           <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Google Authentication</span>
         </div>
 
-        {googleStep === 1 ? (
+        {googleStep === 1 && (
           <form onSubmit={handleGoogleLoginSubmit} class="space-y-4">
             <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
               Choose your Google account to log in directly to Expense Tracker.
@@ -419,9 +457,9 @@ export default function Login() {
                       type="button"
                       onClick={() => {
                         setGoogleEmail(acc.email)
-                        // Trigger login submit automatically for this clicked account
+                        // Trigger login submit automatically for this clicked account (device is verified)
                         setGoogleLoading(true)
-                        googleLogin(acc.email).then(result => {
+                        googleLogin(acc.email, null, true).then(result => {
                           setGoogleLoading(false)
                           if (result.success) {
                             if (result.status === 'SUCCESS') {
@@ -459,7 +497,6 @@ export default function Login() {
               </>
             )}
 
-
             <div>
               <label htmlFor="googleEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Email address
@@ -495,7 +532,9 @@ export default function Login() {
               )}
             </button>
           </form>
-        ) : (
+        )}
+
+        {googleStep === 2 && (
           <form onSubmit={handleGoogleFinalizeSubmit} class="space-y-4">
             <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
               <span class="text-xs text-slate-500 dark:text-slate-400 block">Google account verified</span>
@@ -562,6 +601,63 @@ export default function Login() {
             </button>
           </form>
         )}
+
+        {googleStep === 3 && (
+          <form onSubmit={handleGoogleVerifyPasswordSubmit} class="space-y-4">
+            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Xác minh Google account</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{googleEmail}</strong>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              Thiết bị này chưa được ủy quyền sử dụng tài khoản này. Vui lòng nhập mật khẩu tài khoản Google bạn đã thiết lập lúc đăng ký.
+            </p>
+            
+            <div>
+              <label htmlFor="googleVerifyPassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Nhập mật khẩu tài khoản
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="googleVerifyPassword"
+                  type="password"
+                  required
+                  value={googlePassword}
+                  onChange={(e) => setGooglePassword(e.target.value)}
+                  placeholder="••••••••"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setGoogleStep(1)}
+                class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={googleLoading}
+                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+              >
+                {googleLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify & Log In'
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
       </Modal>
 
       {/* Forgot Password Reset Modal */}

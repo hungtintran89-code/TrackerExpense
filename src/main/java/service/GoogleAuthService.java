@@ -38,6 +38,21 @@ public class GoogleAuthService {
             JsonObject responseJson = new JsonObject();
 
             if (user != null) {
+                boolean deviceVerified = json.get("device_verified") != null && json.get("device_verified").getAsBoolean();
+                String password = json.get("password") != null ? json.get("password").getAsString().trim() : null;
+
+                if (!deviceVerified && password == null) {
+                    responseJson.addProperty("status", "VERIFICATION_REQUIRED");
+                    responseJson.addProperty("email", email);
+                    return new Response(responseJson.toString(), 200);
+                }
+
+                if (password != null) {
+                    if (user.getPassword() == null || !BCrypt.checkpw(password, user.getPassword())) {
+                        return new Response("Mật khẩu tài khoản Google xác minh không chính xác.", 400);
+                    }
+                }
+
                 // User exists! Link Google ID if not already linked
                 if (user.getGoogleId() == null) {
                     String simulatedGoogleId = "google_sim_" + email.split("@")[0];
