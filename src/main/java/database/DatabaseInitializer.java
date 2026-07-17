@@ -26,6 +26,8 @@ public class DatabaseInitializer {
                 stmt.execute("ALTER TABLE users ALTER COLUMN password DROP NOT NULL;");
                 stmt.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;");
                 stmt.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'LOCAL';");
+                stmt.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_password VARCHAR(255);");
+
 
                 // Create otp_verifications table
                 String createOtpVerificationsTable = "CREATE TABLE IF NOT EXISTS otp_verifications (" +

@@ -16,16 +16,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GoogleAuthService {
 
-    // Cache to hold temporary onboarding tickets mapping to emails
-    private static final ConcurrentHashMap<String, String> onboardingCache = new ConcurrentHashMap<>();
+    // Helper class to hold onboarding session data
+    private static class OnboardingSession {
+        final String email;
+        final String googlePassword; // Raw password of Google Account entered in step 2
+
+        OnboardingSession(String email, String googlePassword) {
+            this.email = email;
+            this.googlePassword = googlePassword;
+        }
+    }
+
+    // Cache to hold temporary onboarding sessions mapping to tickets
+    private static final ConcurrentHashMap<String, OnboardingSession> onboardingCache = new ConcurrentHashMap<>();
 
     public static Response login(HttpExchange httpExchange) {
         try {
             JsonObject json = JsonParser.parseReader(new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8)).getAsJsonObject();
-            if (json.get("email") == null) {
-                return new Response("Google email is required!", 400);
+            if (json.get("email") == null || json.get("password") == null) {
+                return new Response("Google email and password are required!", 400);
             }
             String email = json.get("email").getAsString().trim().toLowerCase();
+            String password = json.get("password").getAsString().trim();
 
             // Validate format and ensure it's a google account (gmail.com)
             String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:gmail\\.com)$";
@@ -38,21 +50,19 @@ public class GoogleAuthService {
             JsonObject responseJson = new JsonObject();
 
             if (user != null) {
-                if (json.get("password") == null) {
-                    return new Response("Password is required for Google account login!", 400);
-                }
-                String password = json.get("password").getAsString().trim();
-
-                if (user.getPassword() == null || !BCrypt.checkpw(password, user.getPassword())) {
-                    return new Response("Mật khẩu xác minh tài khoản không chính xác.", 400);
-                }
-
-                // User exists! Link Google ID if not already linked
-                if (user.getGoogleId() == null) {
+                // If user exists but doesn't have a linked Google password yet (e.g. signed up standard previously)
+                if (user.getGooglePassword() == null) {
                     String simulatedGoogleId = "google_sim_" + email.split("@")[0];
-                    UserRepository.linkGoogleAccount(email, simulatedGoogleId);
+                    String googlePasswordHash = BCrypt.hashpw(password, BCrypt.gensalt(12));
+                    UserRepository.linkGoogleAccount(email, simulatedGoogleId, googlePasswordHash);
                     user.setGoogleId(simulatedGoogleId);
+                    user.setGooglePassword(googlePasswordHash);
                     user.setAuthProvider("BOTH");
+                } else {
+                    // User already has Google password set -> Verify it
+                    if (!BCrypt.checkpw(password, user.getGooglePassword())) {
+                        return new Response("Mật khẩu tài khoản Google không chính xác.", 400);
+                    }
                 }
 
                 // Generate secure application JWT token
@@ -71,7 +81,7 @@ public class GoogleAuthService {
             } else {
                 // First-time user! Issue a secure temporary onboarding ticket
                 String onboardingTicket = "onboard_sim_" + UUID.randomUUID().toString();
-                onboardingCache.put(onboardingTicket, email);
+                onboardingCache.put(onboardingTicket, new OnboardingSession(email, password));
 
                 responseJson.addProperty("status", "ONBOARDING_REQUIRED");
                 responseJson.addProperty("onboarding_ticket", onboardingTicket);
@@ -96,8 +106,8 @@ public class GoogleAuthService {
             String fullName = json.get("full_name").getAsString().trim();
             String password = json.get("password").getAsString().trim();
 
-            String email = onboardingCache.get(ticket);
-            if (email == null) {
+            OnboardingSession session = onboardingCache.get(ticket);
+            if (session == null) {
                 return new Response("Invalid or expired onboarding session. Please sign in with Google again.", 400);
             }
 
@@ -110,12 +120,13 @@ public class GoogleAuthService {
                 return new Response("Name already taken. Please choose a different display name.", 400);
             }
 
-            // Hash password
-            String passwordHash = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            String googleId = "google_sim_" + email.split("@")[0];
+            // Hash passwords
+            String passwordHash = BCrypt.hashpw(password, BCrypt.gensalt(12)); // Expense account password
+            String googlePasswordHash = BCrypt.hashpw(session.googlePassword, BCrypt.gensalt(12)); // Google Account password
+            String googleId = "google_sim_" + session.email.split("@")[0];
 
             // Create new linked user
-            User newUser = new User(fullName, email, passwordHash, googleId, "BOTH");
+            User newUser = new User(fullName, session.email, passwordHash, googleId, "BOTH", googlePasswordHash);
             boolean success = UserRepository.insert(newUser);
 
             if (success) {

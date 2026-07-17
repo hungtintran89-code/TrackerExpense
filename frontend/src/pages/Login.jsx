@@ -22,7 +22,8 @@ export default function Login() {
   const [showGoogleModal, setShowGoogleModal] = useState(false)
   const [googleStep, setGoogleStep] = useState(1) // 1: Email, 2: Password, 3: Onboarding Name Setup
   const [googleEmail, setGoogleEmail] = useState('')
-  const [googlePassword, setGooglePassword] = useState('')
+  const [googlePassword, setGooglePassword] = useState('') // Google Account password
+  const [googleOnboardPassword, setGoogleOnboardPassword] = useState('') // Expense Account password
   const [googleName, setGoogleName] = useState('')
   const [onboardingTicket, setOnboardingTicket] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -64,6 +65,7 @@ export default function Login() {
         showToast('Google account verified. Please complete your profile display name.', 'info')
         setOnboardingTicket(result.onboarding_ticket)
         setGoogleName(targetEmail.split('@')[0])
+        setGoogleOnboardPassword(googlePassword) // Pre-fill with the Google password
         setGoogleStep(3) // Move to onboarding name setup
       }
     } else {
@@ -74,14 +76,13 @@ export default function Login() {
   // Step 3: Handle Google Onboarding finalize registration (Display Name setup)
   const handleGoogleFinalizeSubmit = async (e) => {
     e.preventDefault()
-    if (!googleName.trim() || googlePassword.length < 6) {
-      showToast('Name is required, and password must be at least 6 characters.', 'warning')
+    if (!googleName.trim() || googleOnboardPassword.length < 6) {
+      showToast('Name is required, and Expense password must be at least 6 characters.', 'warning')
       return
     }
 
-
     setGoogleLoading(true)
-    const result = await googleFinalize(onboardingTicket, googleName.trim(), googlePassword)
+    const result = await googleFinalize(onboardingTicket, googleName.trim(), googleOnboardPassword)
     setGoogleLoading(true) // Keeps spinner showing while navigating
 
     if (result.success) {
@@ -93,6 +94,7 @@ export default function Login() {
       showToast(result.message, 'error')
     }
   }
+
 
   // Forgot Password States
   const [showResetModal, setShowResetModal] = useState(false)
@@ -523,7 +525,7 @@ export default function Login() {
 
             <div>
               <label htmlFor="googleFinalizePassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Password (confirm or update)
+                Mật khẩu tài khoản Expense (Xác nhận hoặc đổi mới)
               </label>
               <div class="relative mt-1.5 rounded-xl shadow-sm">
                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -534,13 +536,14 @@ export default function Login() {
                   type="password"
                   required
                   minLength={6}
-                  value={googlePassword}
-                  onChange={(e) => setGooglePassword(e.target.value)}
+                  value={googleOnboardPassword}
+                  onChange={(e) => setGoogleOnboardPassword(e.target.value)}
                   placeholder="••••••••"
                   class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
                 />
               </div>
             </div>
+
 
 
             <div class="flex gap-3">

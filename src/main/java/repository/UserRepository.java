@@ -12,7 +12,7 @@ public class UserRepository {
     private static final DBConnection configConnection = new DBConnection();
 
     public static boolean insert(User u) {
-        String query = "INSERT INTO users (name, email, password, google_id, auth_provider) VALUES (?, ?, ?, ?, ?)";
+        String query = "INSERT INTO users (name, email, password, google_id, auth_provider, google_password) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection connection = configConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, u.getName());
@@ -20,6 +20,7 @@ public class UserRepository {
             preparedStatement.setString(3, u.getPassword());
             preparedStatement.setString(4, u.getGoogleId());
             preparedStatement.setString(5, u.getAuthProvider());
+            preparedStatement.setString(6, u.getGooglePassword());
             int res = preparedStatement.executeUpdate();
             return res == 1;
         } catch (Exception e) {
@@ -27,6 +28,7 @@ public class UserRepository {
             return false;
         }
     }
+
 
     public static User findByEmail(String email) {
         String query = "SELECT * FROM users WHERE email = ?";
@@ -40,7 +42,8 @@ public class UserRepository {
                         res.getString("email"),
                         res.getString("password"),
                         res.getString("google_id"),
-                        res.getString("auth_provider")
+                        res.getString("auth_provider"),
+                        res.getString("google_password")
                     );
                 }
             }
@@ -63,7 +66,8 @@ public class UserRepository {
                         res.getString("email"),
                         res.getString("password"),
                         res.getString("google_id"),
-                        res.getString("auth_provider")
+                        res.getString("auth_provider"),
+                        res.getString("google_password")
                     );
                 }
             }
@@ -73,6 +77,7 @@ public class UserRepository {
             return null;
         }
     }
+
 
 
     public static int getID(User user) {
@@ -121,12 +126,13 @@ public class UserRepository {
         }
     }
 
-    public static boolean linkGoogleAccount(String email, String googleId) {
-        String query = "UPDATE users SET google_id = ?, auth_provider = 'BOTH' WHERE email = ?";
+    public static boolean linkGoogleAccount(String email, String googleId, String googlePasswordHash) {
+        String query = "UPDATE users SET google_id = ?, google_password = ?, auth_provider = 'BOTH' WHERE email = ?";
         try (Connection connection = configConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, googleId);
-            preparedStatement.setString(2, email);
+            preparedStatement.setString(2, googlePasswordHash);
+            preparedStatement.setString(3, email);
             int res = preparedStatement.executeUpdate();
             return res == 1;
         } catch (Exception e) {
@@ -134,6 +140,7 @@ public class UserRepository {
             return false;
         }
     }
+
 
     public static boolean finalizeGoogleOnboarding(String email, String name, String passwordHash) {
         String query = "UPDATE users SET name = ?, password = ?, auth_provider = 'BOTH' WHERE email = ?";
