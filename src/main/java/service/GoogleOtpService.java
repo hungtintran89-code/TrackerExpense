@@ -55,13 +55,16 @@ public class GoogleOtpService {
 
             System.out.println("Simulated Google account request for email: " + email);
 
-            // Generate and send OTP simulation
+            // Generate and send OTP
             String otp = String.valueOf(100000 + random.nextInt(900000));
             long expirationTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 minutes
 
-            googleOtpCache.put(email.trim(), new PendingGoogleLogin(name, email.trim(), otp, expirationTime));
+            boolean sent = util.EmailSender.sendOtp(email.trim(), otp);
+            if (!sent) {
+                return new Response("Failed to send OTP code. Please make sure the email address is valid and active.", 400);
+            }
 
-            System.out.println("[Google OTP Simulation] OTP for " + email + " is: " + otp);
+            googleOtpCache.put(email.trim(), new PendingGoogleLogin(name, email.trim(), otp, expirationTime));
 
             JsonObject responseJson = new JsonObject();
             responseJson.addProperty("message", "OTP sent successfully to " + email);

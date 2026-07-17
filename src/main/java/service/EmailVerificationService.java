@@ -65,11 +65,13 @@ public class EmailVerificationService {
             String otp = String.valueOf(100000 + random.nextInt(900000));
             long expirationTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 minutes
 
+            boolean sent = util.EmailSender.sendOtp(email.trim(), otp);
+            if (!sent) {
+                return new Response("Failed to send verification code. Please make sure the email address is valid and reachable.", 400);
+            }
+
             pendingRegistrations.put(email.trim(), new PendingRegistration(name.trim(), email.trim(), password.trim(), otp, expirationTime));
 
-            System.out.println("[Email Verification Simulation] OTP for " + email + " is: " + otp);
-
-            // In simulation mode, we return the OTP for testing purposes
             JsonObject responseJson = new JsonObject();
             responseJson.addProperty("message", "Verification code sent to " + email);
             responseJson.addProperty("otp", otp); // simulation return
