@@ -30,6 +30,10 @@ public class ExpenseTrackerApplication {
 
             server.createContext("/user", (httpExchange) -> {
                 try {
+                    if (httpExchange.getRequestMethod().equals("OPTIONS")) {
+                        responseService.SendResponse(httpExchange, new Response("", 200));
+                        return;
+                    }
                     String[] url = String.valueOf(httpExchange.getRequestURI()).split("/");
                     String lastSegment = url[url.length - 1];
                     if (lastSegment.equals("register")) {
@@ -79,6 +83,10 @@ public class ExpenseTrackerApplication {
 
             server.createContext("/budget", (httpExchange) -> {
                 try {
+                    if (httpExchange.getRequestMethod().equals("OPTIONS")) {
+                        responseService.SendResponse(httpExchange, new Response("", 200));
+                        return;
+                    }
                     String token = (String.valueOf(httpExchange.getRequestHeaders().get("Authorization")));
                     if (token == null || token.equals("null") || token.length() <= 2) {
                         responseService.SendResponse(httpExchange, new Response("Authentication failed!", 401));
@@ -108,6 +116,10 @@ public class ExpenseTrackerApplication {
 
             server.createContext("/wallet", (httpExchange) -> {
                 try {
+                    if (httpExchange.getRequestMethod().equals("OPTIONS")) {
+                        responseService.SendResponse(httpExchange, new Response("", 200));
+                        return;
+                    }
                     String token = (String.valueOf(httpExchange.getRequestHeaders().get("Authorization")));
                     if (token == null || token.equals("null") || token.length() <= 2) {
                         responseService.SendResponse(httpExchange, new Response("Authentication failed!", 401));
@@ -168,6 +180,10 @@ public class ExpenseTrackerApplication {
 
             server.createContext("/post", (httpExchange) -> {
                 try {
+                    if (httpExchange.getRequestMethod().equals("OPTIONS")) {
+                        responseService.SendResponse(httpExchange, new Response("", 200));
+                        return;
+                    }
                     String token = (String.valueOf(httpExchange.getRequestHeaders().get("Authorization")));
                     if (token == null || token.equals("null") || token.length() <= 2) {
                         responseService.SendResponse(httpExchange, new Response("Authentication failed!", 401));
