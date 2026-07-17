@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 import { parseAsciiExpenses } from '../utils/asciiParser'
 import { useToast } from '../components/Toast'
@@ -25,12 +26,17 @@ const getTagBadge = (tag) => {
 
 export default function Expenses() {
   const { showToast } = useToast()
+  const { wallets, selectedWalletId, setSelectedWalletId } = useAuth()
   
   // Wallet states
   const [searchParams] = useSearchParams()
-  const initialWalletId = searchParams.get('walletId') ? parseInt(searchParams.get('walletId'), 10) : null
-  const [selectedWalletId, setSelectedWalletId] = useState(initialWalletId)
-  const [wallets, setWallets] = useState([])
+
+  useEffect(() => {
+    const paramId = searchParams.get('walletId')
+    if (paramId) {
+      setSelectedWalletId(parseInt(paramId, 10))
+    }
+  }, [searchParams, setSelectedWalletId])
 
   // Data states
   const [expenses, setExpenses] = useState([])
@@ -79,18 +85,6 @@ export default function Expenses() {
     }
   }
 
-  // Load wallets once on mount
-  useEffect(() => {
-    const fetchWallets = async () => {
-      try {
-        const response = await api.get('/wallet')
-        setWallets(response.data)
-      } catch (error) {
-        console.error('Error loading wallets:', error)
-      }
-    }
-    fetchWallets()
-  }, [])
 
   // Reload expenses whenever selected wallet changes
   useEffect(() => {

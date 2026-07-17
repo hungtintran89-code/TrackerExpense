@@ -25,7 +25,7 @@ public class Verify {
                 .withIssuer(user.getEmail())
                 .withClaim("id", userId)
                 .withIssuedAt(new Date())
-                .withExpiresAt(new Date( System.currentTimeMillis() +  20 * 60 * 1000))
+                .withExpiresAt(new Date( System.currentTimeMillis() +  10* 24 * 60 * 60 * 1000))
                 .sign(algorithm);
     }
 

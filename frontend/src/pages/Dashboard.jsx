@@ -32,7 +32,15 @@ const getTagStyle = (tag) => {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const {
+    user,
+    wallets,
+    selectedWalletId,
+    setSelectedWalletId,
+    pendingInvitations,
+    fetchWallets,
+    fetchInvitations
+  } = useAuth()
   const [expenses, setExpenses] = useState([])
   const [budgets, setBudgets] = useState([])
   const [budgetLimit, setBudgetLimit] = useState('')
@@ -42,10 +50,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const { showToast } = useToast()
 
-  // Shared Wallet states
-  const [wallets, setWallets] = useState([])
-  const [selectedWalletId, setSelectedWalletId] = useState(null)
-  const [pendingInvitations, setPendingInvitations] = useState([])
+  // Shared Wallet form states
   const [showWalletForm, setShowWalletForm] = useState(false)
   const [newWalletName, setNewWalletName] = useState('')
   const [creatingWallet, setCreatingWallet] = useState(false)
@@ -58,24 +63,6 @@ export default function Dashboard() {
       setBudgets(response.data)
     } catch (error) {
       console.error('Error fetching budgets:', error)
-    }
-  }
-
-  const fetchWallets = async () => {
-    try {
-      const response = await api.get('/wallet')
-      setWallets(response.data)
-    } catch (error) {
-      console.error('Error fetching wallets:', error)
-    }
-  }
-
-  const fetchInvitations = async () => {
-    try {
-      const response = await api.get('/wallet/invitations')
-      setPendingInvitations(response.data)
-    } catch (error) {
-      console.error('Error fetching invitations:', error)
     }
   }
 
@@ -101,11 +88,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchAndParseExpenses()
   }, [selectedWalletId])
-
-  useEffect(() => {
-    fetchWallets()
-    fetchInvitations()
-  }, [])
 
   const handleCreateWallet = async (e) => {
     e.preventDefault()

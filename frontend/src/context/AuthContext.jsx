@@ -34,6 +34,43 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [darkMode, setDarkMode] = useState(false)
 
+  // Cache Shared Wallets & Invitations globally
+  const [wallets, setWallets] = useState([])
+  const [pendingInvitations, setPendingInvitations] = useState([])
+  const [selectedWalletId, setSelectedWalletId] = useState(null)
+
+  const fetchWallets = async () => {
+    if (!localStorage.getItem('token')) return
+    try {
+      const response = await api.get('/wallet')
+      setWallets(response.data || [])
+    } catch (error) {
+      console.error('Failed to fetch wallets:', error)
+    }
+  }
+
+  const fetchInvitations = async () => {
+    if (!localStorage.getItem('token')) return
+    try {
+      const response = await api.get('/wallet/invitations')
+      setPendingInvitations(response.data || [])
+    } catch (error) {
+      console.error('Failed to fetch invitations:', error)
+    }
+  }
+
+  // Load cache automatically when token is present
+  useEffect(() => {
+    if (token) {
+      fetchWallets()
+      fetchInvitations()
+    } else {
+      setWallets([])
+      setPendingInvitations([])
+      setSelectedWalletId(null)
+    }
+  }, [token])
+
   // Initialize Auth state & Dark Mode
   useEffect(() => {
     const savedToken = localStorage.getItem('token')
@@ -161,7 +198,11 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, darkMode, toggleDarkMode, updateToken }}>
+    <AuthContext.Provider value={{
+      user, token, loading, login, register, logout, darkMode, toggleDarkMode, updateToken,
+      wallets, setWallets, pendingInvitations, setPendingInvitations,
+      selectedWalletId, setSelectedWalletId, fetchWallets, fetchInvitations
+    }}>
       {children}
     </AuthContext.Provider>
   )
