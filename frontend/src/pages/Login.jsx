@@ -56,9 +56,9 @@ export default function Login() {
   useEffect(() => {
     const initGoogleGSI = () => {
       if (window.google && window.google.accounts) {
-        const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID || '878772922718-pl0f63q1npsvghlup3bcr0bsh2aivl7l.apps.googleusercontent.com'
+        const client_id = localStorage.getItem('vite_google_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || '878772922718-pl0f63q1npsvghlup3bcr0bsh2aivl7l.apps.googleusercontent.com'
         window.google.accounts.id.initialize({
-          client_id: client_id,
+          client_id: client_id.trim(),
           callback: handleGoogleCredentialResponse
         })
         const btnContainer = document.getElementById('google-signin-btn')
@@ -366,6 +366,22 @@ export default function Login() {
 
           {/* Custom Google Sign-In Button */}
           <div id="google-signin-btn" class="flex justify-center w-full min-h-[48px]"></div>
+          <div class="mt-2 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const newId = prompt("Nhập Google Client ID của bạn (lấy từ Google Cloud Console):", localStorage.getItem('vite_google_client_id') || "")
+                if (newId !== null) {
+                  localStorage.setItem('vite_google_client_id', newId.trim())
+                  showToast("Đã lưu Google Client ID! Vui lòng tải lại trang (F5) để áp dụng.", "success")
+                }
+              }}
+              class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 underline focus:outline-none"
+            >
+              Cấu hình Google Client ID
+            </button>
+          </div>
+
 
 
         </div>
