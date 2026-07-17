@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import Modal from '../components/Modal'
-import { Wallet, Mail, Lock, Eye, EyeOff, Loader2, Key, Sparkles, User } from 'lucide-react'
+import { Wallet, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+
 
 
 export default function Login() {
@@ -21,85 +21,8 @@ export default function Login() {
 
 
 
-  // Forgot Password States
-  const [showResetModal, setShowResetModal] = useState(false)
-  const [resetStep, setResetStep] = useState(1) // 1: Email, 2: OTP, 3: New Password
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetOtp, setResetOtp] = useState('')
-  const [resetToken, setResetToken] = useState('')
-  const [resetPasswordVal, setResetPasswordVal] = useState('')
-  const [resetLoading, setResetLoading] = useState(false)
 
 
-  // Handle Forgot Password OTP request
-  const handleForgotPasswordSubmit = async (e) => {
-    e.preventDefault()
-    if (!resetEmail.trim()) {
-      showToast('Please enter your email address.', 'warning')
-      return
-    }
-
-    setResetLoading(true)
-    const result = await forgotPassword(resetEmail.trim())
-    setResetLoading(false)
-
-    if (result.success) {
-      showToast(result.message, 'success')
-      if (result.otp) {
-        console.log("Simulated Reset Password OTP:", result.otp)
-        showToast(`[Simulation] OTP for ${resetEmail} is: ${result.otp}`, 'info')
-      }
-      setResetStep(2)
-    } else {
-      showToast(result.message, 'error')
-    }
-  }
-
-  // Handle OTP code verification
-  const handleVerifyOtpSubmit = async (e) => {
-    e.preventDefault()
-    if (!resetOtp.trim()) {
-      showToast('Please enter the 6-digit OTP code.', 'warning')
-      return
-    }
-
-    setResetLoading(true)
-    const result = await verifyOtp(resetEmail.trim(), resetOtp.trim())
-    setResetLoading(false)
-
-    if (result.success) {
-      showToast('OTP verified. Please set your new password.', 'success')
-      setResetToken(result.reset_token)
-      setResetStep(3)
-    } else {
-      showToast(result.message, 'error')
-    }
-  }
-
-  // Handle New Password submit
-  const handleResetPasswordFinalizeSubmit = async (e) => {
-    e.preventDefault()
-    if (resetPasswordVal.length < 6) {
-      showToast('Password must be at least 6 characters long.', 'warning')
-      return
-    }
-
-    setResetLoading(true)
-    const result = await resetPassword(resetEmail.trim(), resetToken, resetPasswordVal)
-    setResetLoading(false)
-
-    if (result.success) {
-      showToast(result.message, 'success')
-      setShowResetModal(false)
-      // Clear states
-      setResetEmail('')
-      setResetOtp('')
-      setResetToken('')
-      setResetPasswordVal('')
-    } else {
-      showToast(result.message, 'error')
-    }
-  }
 
 
 
@@ -209,22 +132,8 @@ export default function Login() {
                   <label htmlFor="password" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                     Password
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResetStep(1)
-                      setResetEmail('')
-                      setResetOtp('')
-                      setResetToken('')
-                      setResetPasswordVal('')
-                      setShowResetModal(true)
-                    }}
-                    class="text-xs font-semibold text-primary-600 hover:text-primary-500 dark:text-primary-400 focus:outline-none"
-                  >
-                    Forgot password?
-                  </button>
-
                 </div>
+
                 <div class="relative mt-1.5 rounded-xl shadow-sm">
                   <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                     <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
@@ -267,153 +176,8 @@ export default function Login() {
         </div>
       </div>
 
-      <Modal
-        isOpen={showResetModal}
-        onClose={() => setShowResetModal(false)}
-        title="Forgot Password Request"
-      >
-        {resetStep === 1 && (
-          <form onSubmit={handleForgotPasswordSubmit} class="space-y-4">
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-              Enter your registered email address. We will verify your account and send a 6-digit OTP code to reset your password.
-            </p>
-            <div>
-              <label htmlFor="resetEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Email Address
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="resetEmail"
-                  type="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={resetLoading}
-              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-            >
-              {resetLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Verifying Email...
-                </>
-              ) : (
-                'Send Verification Code'
-              )}
-            </button>
-          </form>
-        )}
 
-        {resetStep === 2 && (
-          <form onSubmit={handleVerifyOtpSubmit} class="space-y-4">
-            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
-              <span class="text-xs text-slate-500 dark:text-slate-400 block">Verification code sent to</span>
-              <strong class="text-sm text-slate-700 dark:text-slate-200">{resetEmail}</strong>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Please enter the 6-digit OTP code sent to your email to verify your identity.
-            </p>
-            <div>
-              <label htmlFor="resetOtp" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Enter 6-digit OTP
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="resetOtp"
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={resetOtp}
-                  onChange={(e) => setResetOtp(e.target.value)}
-                  placeholder="123456"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-            <div class="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setResetStep(1)}
-                class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={resetLoading}
-                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-              >
-                {resetLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify Code'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
 
-        {resetStep === 3 && (
-          <form onSubmit={handleResetPasswordFinalizeSubmit} class="space-y-4">
-            <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center border border-emerald-100 dark:border-emerald-900/40">
-              <span class="text-xs text-emerald-600 dark:text-emerald-400 block font-semibold">Identity Verified</span>
-              <strong class="text-sm text-slate-700 dark:text-slate-200">{resetEmail}</strong>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Please choose a new secure password for your account.
-            </p>
-            <div>
-              <label htmlFor="resetPasswordVal" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                New Password
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="resetPasswordVal"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={resetPasswordVal}
-                  onChange={(e) => setResetPasswordVal(e.target.value)}
-                  placeholder="•••••••• (min 6 characters)"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={resetLoading}
-              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-            >
-              {resetLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Updating Password...
-                </>
-              ) : (
-                'Reset Password'
-              )}
-            </button>
-          </form>
-        )}
-      </Modal>
 
 
 
