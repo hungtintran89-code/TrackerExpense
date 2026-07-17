@@ -26,6 +26,8 @@ public class EmailSender {
         properties.put("mail.smtp.starttls.enable", "true");
         properties.put("mail.smtp.host", SMTP_HOST);
         properties.put("mail.smtp.port", SMTP_PORT);
+        properties.put("mail.smtp.connectiontimeout", "5000"); // 5s timeout
+        properties.put("mail.smtp.timeout", "5000");           // 5s timeout
 
         Session session = Session.getInstance(properties, new Authenticator() {
             @Override
