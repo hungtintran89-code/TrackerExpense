@@ -53,15 +53,15 @@ public class ExpenseTrackerApplication {
                         }
                     } else if (lastSegment.equals("login")) {
                         responseService.SendResponse(httpExchange, userController.userLoginController(httpExchange));
-                    } else if (lastSegment.equals("google-otp-request")) {
+                    } else if (lastSegment.equals("google-login")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
-                            responseService.SendResponse(httpExchange, userController.requestGoogleOtp(httpExchange));
+                            responseService.SendResponse(httpExchange, userController.googleLogin(httpExchange));
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
-                    } else if (lastSegment.equals("google-otp-confirm")) {
+                    } else if (lastSegment.equals("google-finalize")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
-                            responseService.SendResponse(httpExchange, userController.confirmGoogleOtp(httpExchange));
+                            responseService.SendResponse(httpExchange, userController.googleFinalize(httpExchange));
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
@@ -71,12 +71,19 @@ public class ExpenseTrackerApplication {
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
+                    } else if (lastSegment.equals("verify-otp")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, service.PasswordResetService.verifyOtp(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
                     } else if (lastSegment.equals("reset-password")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
                             responseService.SendResponse(httpExchange, service.PasswordResetService.resetPassword(httpExchange));
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
+
                     } else if (lastSegment.equals("change-password") || lastSegment.equals("change-email")) {
                         String token = (String.valueOf(httpExchange.getRequestHeaders().get("Authorization")));
                         if (token == null || token.equals("null") || token.length() <= 2) {

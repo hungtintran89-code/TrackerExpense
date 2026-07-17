@@ -16,6 +16,8 @@ public class User {
     private String name ;
     private String email ;
     private String password ;
+    private String googleId;
+    private String authProvider = "LOCAL";
 
     public User(){}
 
@@ -25,12 +27,23 @@ public class User {
         this.password = passoword ;
     }
 
+    public User(String name, String email, String password, String googleId, String authProvider) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.googleId = googleId;
+        this.authProvider = authProvider;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                 "name='" + name + '\'' +
                 ", email='" + email + '\'' +
-                ", passoword='" + password + '\'' +
+                ", password='" + password + '\'' +
+                ", googleId='" + googleId + '\'' +
+                ", authProvider='" + authProvider + '\'' +
                 '}';
     }
 }
+

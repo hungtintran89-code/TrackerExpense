@@ -6,15 +6,15 @@ import dto.Response;
 import entity.User;
 import org.mindrot.jbcrypt.BCrypt;
 import repository.UserRepository;
+import repository.OtpVerificationRepository;
+import util.EmailSender;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class PasswordResetService {
 
-    private static final Map<String, String> resetCodes = new ConcurrentHashMap<>();
     private static final Random random = new Random();
 
     public static Response forgotPassword(HttpExchange httpExchange) {
@@ -25,20 +25,33 @@ public class PasswordResetService {
                 return new Response("Email is required!", 400);
             }
 
-            User user = UserRepository.findByEmail(email.trim());
+            email = email.trim().toLowerCase();
+
+            User user = UserRepository.findByEmail(email);
             if (user == null) {
-                return new Response("User not found with the provided email!", 404);
+                return new Response("Email chưa được đăng ký.", 404);
             }
 
-            // Generate 6-digit code
-            String code = String.valueOf(100000 + random.nextInt(900000));
-            resetCodes.put(email.trim(), code);
+            // Generate 6-digit OTP code
+            String otp = String.valueOf(100000 + random.nextInt(900000));
+            String otpHash = BCrypt.hashpw(otp, BCrypt.gensalt(12));
+            long expiresAt = System.currentTimeMillis() + (5 * 60 * 1000); // 5 minutes
 
-            System.out.println("[Password Reset Simulation] Code for " + email + " is: " + code);
+            // Save hashed OTP in database
+            boolean dbSaved = OtpVerificationRepository.insertOtp(email, otpHash, expiresAt);
+            if (!dbSaved) {
+                return new Response("Failed to generate verification session.", 500);
+            }
+
+            // Send real email OTP
+            boolean emailSent = EmailSender.sendOtp(email, otp);
+            if (!emailSent) {
+                return new Response("Failed to dispatch verification email.", 500);
+            }
 
             Map<String, String> res = new HashMap<>();
-            res.put("message", "A password reset code has been generated.");
-            res.put("code", code); // Return code for simulation purposes
+            res.put("message", "Verification code sent to " + email);
+            res.put("otp", otp); // For testing simulation toast on frontend
 
             return new Response(TranferController.fromObject(res), 200);
         } catch (Exception e) {
@@ -47,37 +60,76 @@ public class PasswordResetService {
         }
     }
 
+    public static Response verifyOtp(HttpExchange httpExchange) {
+        try {
+            Map<String, String> body = TranferController.fromString(httpExchange.getRequestBody(), Map.class);
+            String email = body != null ? body.get("email") : null;
+            String otp = body != null ? body.get("otp") : null;
+
+            if (email == null || email.trim().isEmpty() || otp == null || otp.trim().isEmpty()) {
+                return new Response("Email and OTP code are required!", 400);
+            }
+
+            email = email.trim().toLowerCase();
+
+            String resetToken = OtpVerificationRepository.verifyOtp(email, otp.trim());
+            if (resetToken == null) {
+                return new Response("OTP sai hoặc hết hạn.", 400);
+            }
+
+            Map<String, String> res = new HashMap<>();
+            res.put("message", "OTP verified successfully.");
+            res.put("reset_token", resetToken);
+
+            return new Response(TranferController.fromObject(res), 200);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new Response("Server error during OTP verification: " + e.getMessage(), 500);
+        }
+    }
+
     public static Response resetPassword(HttpExchange httpExchange) {
         try {
             Map<String, String> body = TranferController.fromString(httpExchange.getRequestBody(), Map.class);
             String email = body != null ? body.get("email") : null;
-            String code = body != null ? body.get("code") : null;
-            String newPassword = body != null ? body.get("newPassword") : null;
+            String resetToken = body != null ? body.get("reset_token") : null;
+            String newPassword = body != null ? body.get("new_password") : null;
 
             if (email == null || email.trim().isEmpty() ||
-                code == null || code.trim().isEmpty() ||
+                resetToken == null || resetToken.trim().isEmpty() ||
                 newPassword == null || newPassword.trim().isEmpty()) {
-                return new Response("Email, code, and new password are all required!", 400);
+                return new Response("Email, reset token, and new password are all required!", 400);
             }
 
-            String expectedCode = resetCodes.get(email.trim());
-            if (expectedCode == null || !expectedCode.equals(code.trim())) {
-                return new Response("Invalid or expired reset code!", 400);
+            email = email.trim().toLowerCase();
+
+            // Validate token from database
+            boolean isValid = OtpVerificationRepository.validateResetToken(email, resetToken);
+            if (!isValid) {
+                return new Response("Mã xác minh đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.", 400);
+            }
+
+            if (newPassword.trim().length() < 6) {
+                return new Response("Mật khẩu mới phải có ít nhất 6 ký tự.", 400);
             }
 
             // Hash new password using BCrypt
-            String passwordHash = BCrypt.hashpw(newPassword.trim(), BCrypt.gensalt());
-            boolean success = UserRepository.updatePassword(email.trim(), passwordHash);
+            String passwordHash = BCrypt.hashpw(newPassword.trim(), BCrypt.gensalt(12));
+            boolean success = UserRepository.updatePassword(email, passwordHash);
 
             if (success) {
-                resetCodes.remove(email.trim());
-                return new Response("Password reset successfully!", 200);
+                // Clear reset tokens from database
+                OtpVerificationRepository.clearResetTokens(email);
+                
+                Map<String, String> res = new HashMap<>();
+                res.put("message", "Password reset successfully!");
+                return new Response(TranferController.fromObject(res), 200);
             } else {
                 return new Response("Failed to update password in database!", 500);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return new Response("Server error: " + e.getMessage(), 500);
+            return new Response("Server error during password reset: " + e.getMessage(), 500);
         }
     }
 }

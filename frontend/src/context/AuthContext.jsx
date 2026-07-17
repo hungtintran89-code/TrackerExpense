@@ -154,33 +154,8 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Google Login handler
-  const googleLogin = async (googleIdToken) => {
-    try {
-      const response = await api.post('/user/google-login', { token: googleIdToken })
-      const data = response.data
 
-      if (typeof data === 'string' && data.startsWith('eyJ')) {
-        const decoded = decodeToken(data)
-        if (decoded) {
-          localStorage.setItem('token', data)
-          setToken(data)
-          setUser({ id: decoded.id, name: decoded.name, email: decoded.email })
-          return { success: true }
-        }
-      }
-      return {
-        success: false,
-        message: typeof data === 'string' ? data : 'Google Authentication failed.'
-      }
-    } catch (error) {
-      console.error('Google Login error:', error)
-      return {
-        success: false,
-        message: error.response?.data || 'Google authentication failed. Please try again.'
-      }
-    }
-  }
+
 
   // Register Request handler (Step 1)
   const registerRequest = async (name, email, password) => {
@@ -212,52 +187,119 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Google OTP Request handler (Step 1)
-  const googleOtpRequest = async (email) => {
+  // Google Direct Login handler (Simulated)
+  const googleLogin = async (email) => {
     try {
-      const response = await api.post('/user/google-otp-request', { email })
-      return {
-        success: true,
-        message: response.data?.message || 'Verification code sent.',
-        email: response.data?.email,
-        otp: response.data?.otp
-      }
-    } catch (error) {
-      console.error('Google OTP request error:', error)
-      return {
-        success: false,
-        message: error.response?.data || 'Failed to authenticate Google account or send OTP.'
-      }
-    }
-  }
-
-  // Google OTP Confirm handler (Step 2)
-  const googleOtpConfirm = async (email, otp) => {
-    try {
-      const response = await api.post('/user/google-otp-confirm', { email, otp })
+      const response = await api.post('/user/google-login', { email })
       const data = response.data
-
-      if (typeof data === 'string' && data.startsWith('eyJ')) {
-        const decoded = decodeToken(data)
+      if (data.status === 'SUCCESS' && data.token) {
+        const decoded = decodeToken(data.token)
         if (decoded) {
-          localStorage.setItem('token', data)
-          setToken(data)
-          setUser({ id: decoded.id, name: decoded.name, email: decoded.email })
-          return { success: true }
+          localStorage.setItem('token', data.token)
+          setToken(data.token)
+          setUser({ id: decoded.id, name: decoded.name, email: decoded.email, auth_provider: decoded.auth_provider })
+          return { success: true, status: 'SUCCESS' }
         }
       }
       return {
-        success: false,
-        message: typeof data === 'string' ? data : 'Google Verification failed.'
+        success: true,
+        status: data.status,
+        onboarding_ticket: data.onboarding_ticket,
+        email: data.email
       }
     } catch (error) {
-      console.error('Google OTP confirm error:', error)
+      console.error('Google login error:', error)
       return {
         success: false,
-        message: error.response?.data || 'Invalid verification code.'
+        message: error.response?.data || 'Failed to authenticate with Google.'
       }
     }
   }
+
+  // Google Onboarding Finalize handler
+  const googleFinalize = async (ticket, fullName, password) => {
+    try {
+      const response = await api.post('/user/google-finalize', {
+        onboarding_ticket: ticket,
+        full_name: fullName,
+        password
+      })
+      const data = response.data
+      if (data.token) {
+        const decoded = decodeToken(data.token)
+        if (decoded) {
+          localStorage.setItem('token', data.token)
+          setToken(data.token)
+          setUser({ id: decoded.id, name: decoded.name, email: decoded.email, auth_provider: decoded.auth_provider })
+          return { success: true }
+        }
+      }
+      return { success: false, message: 'Finalize onboarding failed.' }
+    } catch (error) {
+      console.error('Google finalize error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Failed to complete Google onboarding.'
+      }
+    }
+  }
+
+  // Forgot Password request
+  const forgotPassword = async (email) => {
+    try {
+      const response = await api.post('/user/forgot-password', { email })
+      return {
+        success: true,
+        message: response.data?.message || 'Verification code sent.',
+        otp: response.data?.otp // simulation backup
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Email chưa được đăng ký.'
+      }
+    }
+  }
+
+  // Verify Reset OTP
+  const verifyOtp = async (email, otp) => {
+    try {
+      const response = await api.post('/user/verify-otp', { email, otp })
+      return {
+        success: true,
+        reset_token: response.data?.reset_token
+      }
+    } catch (error) {
+      console.error('Verify OTP error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'OTP sai hoặc hết hạn.'
+      }
+    }
+  }
+
+  // Reset Password Finalize
+  const resetPassword = async (email, resetToken, newPassword) => {
+    try {
+      const response = await api.post('/user/reset-password', {
+        email,
+        reset_token: resetToken,
+        new_password: newPassword
+      })
+      return {
+        success: true,
+        message: response.data?.message || 'Password reset successfully.'
+      }
+    } catch (error) {
+      console.error('Reset password error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Failed to reset password.'
+      }
+    }
+  }
+
 
 
   // Register handler
@@ -305,11 +347,12 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, token, loading, login, googleLogin, register, registerRequest, registerConfirm,
-      googleOtpRequest, googleOtpConfirm, logout, darkMode, toggleDarkMode, updateToken,
+      user, token, loading, login, googleLogin, googleFinalize, register, registerRequest, registerConfirm,
+      forgotPassword, verifyOtp, resetPassword, logout, darkMode, toggleDarkMode, updateToken,
       wallets, setWallets, pendingInvitations, setPendingInvitations,
       selectedWalletId, setSelectedWalletId, fetchWallets, fetchInvitations
     }}>
+
       {children}
     </AuthContext.Provider>
   )

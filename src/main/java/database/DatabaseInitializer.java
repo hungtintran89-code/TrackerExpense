@@ -18,9 +18,26 @@ public class DatabaseInitializer {
                         "id SERIAL PRIMARY KEY, " +
                         "name VARCHAR(100) UNIQUE NOT NULL, " +
                         "email VARCHAR(100) UNIQUE NOT NULL, " +
-                        "password VARCHAR(255) NOT NULL" +
+                        "password VARCHAR(255) NULL" + // Changed to NULL (nullable)
                         ");";
                 stmt.execute(createUsersTable);
+
+                // Alter users table to ensure columns exist and drop NOT NULL constraint on password
+                stmt.execute("ALTER TABLE users ALTER COLUMN password DROP NOT NULL;");
+                stmt.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;");
+                stmt.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'LOCAL';");
+
+                // Create otp_verifications table
+                String createOtpVerificationsTable = "CREATE TABLE IF NOT EXISTS otp_verifications (" +
+                        "id SERIAL PRIMARY KEY, " +
+                        "email VARCHAR(100) NOT NULL, " +
+                        "otp_hash VARCHAR(255) NOT NULL, " +
+                        "expires_at TIMESTAMP NOT NULL, " +
+                        "reset_token VARCHAR(255) UNIQUE DEFAULT NULL, " +
+                        "is_verified BOOLEAN DEFAULT FALSE" +
+                        ");";
+                stmt.execute(createOtpVerificationsTable);
+
 
                 // 2. Create wallet table
                 String createWalletTable = "CREATE TABLE IF NOT EXISTS wallet (" +

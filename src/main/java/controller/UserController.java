@@ -44,13 +44,14 @@ public class UserController {
         return new Response(String.valueOf(checkPassword), 200);
     }
 
-    public Response requestGoogleOtp(HttpExchange httpExchange) {
-        return service.GoogleOtpService.requestOtp(httpExchange);
+    public Response googleLogin(HttpExchange httpExchange) {
+        return service.GoogleAuthService.login(httpExchange);
     }
 
-    public Response confirmGoogleOtp(HttpExchange httpExchange) {
-        return service.GoogleOtpService.confirmOtp(httpExchange);
+    public Response googleFinalize(HttpExchange httpExchange) {
+        return service.GoogleAuthService.finalizeOnboarding(httpExchange);
     }
+
 
     public Response changePassword(HttpExchange httpExchange, User user) {
         return UserUpdateService.changePassword(httpExchange, user);

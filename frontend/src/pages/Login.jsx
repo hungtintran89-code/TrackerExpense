@@ -17,64 +17,149 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Google Login OTP Verification States
-  const [showOtpModal, setShowOtpModal] = useState(false)
-  const [otpStep, setOtpStep] = useState(1) // 1 for email, 2 for OTP code
-  const [otpEmail, setOtpEmail] = useState('')
-  const [otpCode, setOtpCode] = useState('')
-  const [otpLoading, setOtpLoading] = useState(false)
+  // Google Sign-In & Onboarding States
+  const [showGoogleModal, setShowGoogleModal] = useState(false)
+  const [googleStep, setGoogleStep] = useState(1) // 1: Choose Account, 2: Onboarding Setup
+  const [googleEmail, setGoogleEmail] = useState('')
+  const [googleName, setGoogleName] = useState('')
+  const [googlePassword, setGooglePassword] = useState('')
+  const [onboardingTicket, setOnboardingTicket] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
 
-  const handleRequestGoogleOtp = async (e) => {
+  // Forgot Password States
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetStep, setResetStep] = useState(1) // 1: Email, 2: OTP, 3: New Password
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetOtp, setResetOtp] = useState('')
+  const [resetToken, setResetToken] = useState('')
+  const [resetPasswordVal, setResetPasswordVal] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
+  // Handle Google Login request (Simulated Account Chooser step)
+  const handleGoogleLoginSubmit = async (e) => {
     e.preventDefault()
-    if (!otpEmail.trim()) {
-      showToast('Please enter your Google email address.', 'warning')
+    if (!googleEmail.trim()) {
+      showToast('Please enter your Google email.', 'warning')
       return
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(otpEmail.trim())) {
-      showToast('Please enter a valid email address.', 'warning')
-      return
-    }
-    if (!otpEmail.trim().endsWith('@gmail.com')) {
-      showToast('Only Gmail addresses (@gmail.com) are supported for Google Login.', 'warning')
+    if (!googleEmail.trim().endsWith('@gmail.com')) {
+      showToast('Please enter a valid Gmail address (@gmail.com).', 'warning')
       return
     }
 
-    setOtpLoading(true)
-    const result = await googleOtpRequest(otpEmail.trim())
-    setOtpLoading(false)
+    setGoogleLoading(true)
+    const result = await googleLogin(googleEmail.trim())
+    setGoogleLoading(false)
+
+    if (result.success) {
+      if (result.status === 'SUCCESS') {
+        showToast('Successfully logged in with Google!', 'success')
+        setShowGoogleModal(false)
+        navigate('/dashboard')
+      } else if (result.status === 'ONBOARDING_REQUIRED') {
+        showToast('Google account verified. Please complete your profile setup.', 'info')
+        setOnboardingTicket(result.onboarding_ticket)
+        setGoogleName(googleEmail.split('@')[0])
+        setGooglePassword('')
+        setGoogleStep(2) // Move to onboarding screen
+      }
+    } else {
+      showToast(result.message, 'error')
+    }
+  }
+
+  // Handle Google Onboarding finalize registration
+  const handleGoogleFinalizeSubmit = async (e) => {
+    e.preventDefault()
+    if (!googleName.trim() || googlePassword.length < 6) {
+      showToast('Name is required, and password must be at least 6 characters.', 'warning')
+      return
+    }
+
+    setGoogleLoading(true)
+    const result = await googleFinalize(onboardingTicket, googleName.trim(), googlePassword)
+    setGoogleLoading(true) // Keeps spinner showing while navigating
+
+    if (result.success) {
+      showToast('Account created successfully! Welcome to Expense Tracker.', 'success')
+      setShowGoogleModal(false)
+      navigate('/dashboard')
+    } else {
+      setGoogleLoading(false)
+      showToast(result.message, 'error')
+    }
+  }
+
+  // Handle Forgot Password OTP request
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault()
+    if (!resetEmail.trim()) {
+      showToast('Please enter your email address.', 'warning')
+      return
+    }
+
+    setResetLoading(true)
+    const result = await forgotPassword(resetEmail.trim())
+    setResetLoading(false)
 
     if (result.success) {
       showToast(result.message, 'success')
       if (result.otp) {
-        console.log("Simulated Google Login OTP:", result.otp)
-        showToast(`[Simulation] OTP for ${result.email} is: ${result.otp}`, 'info')
+        console.log("Simulated Reset Password OTP:", result.otp)
+        showToast(`[Simulation] OTP for ${resetEmail} is: ${result.otp}`, 'info')
       }
-      setOtpStep(2)
+      setResetStep(2)
     } else {
       showToast(result.message, 'error')
     }
   }
 
-  const handleVerifyGoogleOtp = async (e) => {
+  // Handle OTP code verification
+  const handleVerifyOtpSubmit = async (e) => {
     e.preventDefault()
-    if (!otpCode.trim()) {
-      showToast('Please enter the verification code.', 'warning')
+    if (!resetOtp.trim()) {
+      showToast('Please enter the 6-digit OTP code.', 'warning')
       return
     }
 
-    setOtpLoading(true)
-    const result = await googleOtpConfirm(otpEmail, otpCode.trim())
-    setOtpLoading(false)
+    setResetLoading(true)
+    const result = await verifyOtp(resetEmail.trim(), resetOtp.trim())
+    setResetLoading(false)
 
     if (result.success) {
-      showToast('Welcome back! You have successfully signed in.', 'success')
-      setShowOtpModal(false)
-      navigate('/dashboard')
+      showToast('OTP verified. Please set your new password.', 'success')
+      setResetToken(result.reset_token)
+      setResetStep(3)
     } else {
       showToast(result.message, 'error')
     }
   }
+
+  // Handle New Password submit
+  const handleResetPasswordFinalizeSubmit = async (e) => {
+    e.preventDefault()
+    if (resetPasswordVal.length < 6) {
+      showToast('Password must be at least 6 characters long.', 'warning')
+      return
+    }
+
+    setResetLoading(true)
+    const result = await resetPassword(resetEmail.trim(), resetToken, resetPasswordVal)
+    setResetLoading(false)
+
+    if (result.success) {
+      showToast(result.message, 'success')
+      setShowResetModal(false)
+      // Clear states
+      setResetEmail('')
+      setResetOtp('')
+      setResetToken('')
+      setResetPasswordVal('')
+    } else {
+      showToast(result.message, 'error')
+    }
+  }
+
 
 
 
@@ -183,9 +268,21 @@ export default function Login() {
                   <label htmlFor="password" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                     Password
                   </label>
-                  <Link to="/forgot-password" class="text-xs font-semibold text-primary-600 hover:text-primary-500 dark:text-primary-400">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetStep(1)
+                      setResetEmail('')
+                      setResetOtp('')
+                      setResetToken('')
+                      setResetPasswordVal('')
+                      setShowResetModal(true)
+                    }}
+                    class="text-xs font-semibold text-primary-600 hover:text-primary-500 dark:text-primary-400 focus:outline-none"
+                  >
                     Forgot password?
-                  </Link>
+                  </button>
+
                 </div>
                 <div class="relative mt-1.5 rounded-xl shadow-sm">
                   <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -239,14 +336,15 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Google Sig          {/* Custom Google Sign-In Button */}
+          {/* Custom Google Sign-In Button */}
           <button
             type="button"
             onClick={() => {
-              setOtpStep(1)
-              setOtpEmail('')
-              setOtpCode('')
-              setShowOtpModal(true)
+              setGoogleStep(1)
+              setGoogleEmail('')
+              setGoogleName('')
+              setGooglePassword('')
+              setShowGoogleModal(true)
             }}
             class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
           >
@@ -273,11 +371,11 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Google Login OTP Verification Modal */}
+      {/* Google Login Account Chooser & Onboarding Modal */}
       <Modal
-        isOpen={showOtpModal}
-        onClose={() => setShowOtpModal(false)}
-        title={otpStep === 1 ? "Sign in - Google Accounts" : "Verify Gmail Access"}
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        title={googleStep === 1 ? "Sign in - Google Accounts" : "Complete Google Profile"}
       >
         <div class="flex flex-col items-center mb-6">
           <svg className="h-10 w-10 mb-2" viewBox="0 0 24 24">
@@ -289,39 +387,64 @@ export default function Login() {
           <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Google Authentication</span>
         </div>
 
-        {otpStep === 1 ? (
-          <form onSubmit={handleRequestGoogleOtp} class="space-y-4">
+        {googleStep === 1 ? (
+          <form onSubmit={handleGoogleLoginSubmit} class="space-y-4">
             <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Use your Google Account. Enter your Gmail address below to receive an OTP login code.
+              Choose your Google account to log in directly to Expense Tracker.
             </p>
+            
+            {/* Quick account presets to simulate Google account chooser */}
+            <div class="space-y-2">
+              <button
+                type="button"
+                onClick={() => setGoogleEmail('hungtintran89@gmail.com')}
+                class="flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-900 p-3 hover:bg-slate-100 dark:hover:bg-dark-800 transition text-left"
+              >
+                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+                  H
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">Hưng Tín Trần</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate">hungtintran89@gmail.com</p>
+                </div>
+              </button>
+            </div>
+
+            <div class="relative flex py-2 items-center">
+              <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
+              <span class="flex-shrink mx-4 text-slate-400 text-xs">Or use another account</span>
+              <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
+            </div>
+
             <div>
-              <label htmlFor="otpEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Email or phone
+              <label htmlFor="googleEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Email address
               </label>
               <div class="relative mt-1.5 rounded-xl shadow-sm">
                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                   <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
-                  id="otpEmail"
+                  id="googleEmail"
                   type="email"
                   required
-                  value={otpEmail}
-                  onChange={(e) => setOtpEmail(e.target.value)}
-                  placeholder="example@gmail.com"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  placeholder="name@gmail.com"
                   class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
                 />
               </div>
             </div>
+
             <button
               type="submit"
-              disabled={otpLoading}
-              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+              disabled={googleLoading}
+              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
             >
-              {otpLoading ? (
+              {googleLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Requesting...
+                  Connecting...
                 </>
               ) : (
                 'Next'
@@ -329,16 +452,132 @@ export default function Login() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyGoogleOtp} class="space-y-4">
+          <form onSubmit={handleGoogleFinalizeSubmit} class="space-y-4">
             <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
-              <span class="text-xs text-slate-500 dark:text-slate-400 block">Signing in as</span>
-              <strong class="text-sm text-slate-700 dark:text-slate-200">{otpEmail}</strong>
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Google account verified</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{googleEmail}</strong>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              We generated a 6-digit OTP code to this Gmail account. Please check your inbox and fill it in.
+              Welcome! Please set a display name and password to complete your account setup. You can use these credentials to log in later.
+            </p>
+            
+            <div>
+              <label htmlFor="googleName" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Display Name
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <User className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="googleName"
+                  type="text"
+                  required
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
+                  placeholder="Your display name"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="googlePassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Create Password
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="googlePassword"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={googlePassword}
+                  onChange={(e) => setGooglePassword(e.target.value)}
+                  placeholder="•••••••• (min 6 characters)"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={googleLoading}
+              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+            >
+              {googleLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                'Finalize & Sign In'
+              )}
+            </button>
+          </form>
+        )}
+      </Modal>
+
+      {/* Forgot Password Reset Modal */}
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Forgot Password Request"
+      >
+        {resetStep === 1 && (
+          <form onSubmit={handleForgotPasswordSubmit} class="space-y-4">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              Enter your registered email address. We will verify your account and send a 6-digit OTP code to reset your password.
             </p>
             <div>
-              <label htmlFor="otpCode" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <label htmlFor="resetEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Email Address
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="resetEmail"
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={resetLoading}
+              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+            >
+              {resetLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Verifying Email...
+                </>
+              ) : (
+                'Send Verification Code'
+              )}
+            </button>
+          </form>
+        )}
+
+        {resetStep === 2 && (
+          <form onSubmit={handleVerifyOtpSubmit} class="space-y-4">
+            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Verification code sent to</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{resetEmail}</strong>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              Please enter the 6-digit OTP code sent to your email to verify your identity.
+            </p>
+            <div>
+              <label htmlFor="resetOtp" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Enter 6-digit OTP
               </label>
               <div class="relative mt-1.5 rounded-xl shadow-sm">
@@ -346,43 +585,90 @@ export default function Login() {
                   <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
-                  id="otpCode"
+                  id="resetOtp"
                   type="text"
                   required
                   maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
+                  value={resetOtp}
+                  onChange={(e) => setResetOtp(e.target.value)}
                   placeholder="123456"
                   class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
                 />
               </div>
             </div>
-            <div class="flex justify-between gap-3.5">
+            <div class="flex gap-3">
               <button
                 type="button"
-                onClick={() => setOtpStep(1)}
+                onClick={() => setResetStep(1)}
                 class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
               >
                 Back
               </button>
               <button
                 type="submit"
-                disabled={otpLoading}
-                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+                disabled={resetLoading}
+                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
               >
-                {otpLoading ? (
+                {resetLoading ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Verifying...
                   </>
                 ) : (
-                  'Verify & Sign In'
+                  'Verify Code'
                 )}
               </button>
             </div>
           </form>
         )}
+
+        {resetStep === 3 && (
+          <form onSubmit={handleResetPasswordFinalizeSubmit} class="space-y-4">
+            <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 p-3 text-center border border-emerald-100 dark:border-emerald-900/40">
+              <span class="text-xs text-emerald-600 dark:text-emerald-400 block font-semibold">Identity Verified</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{resetEmail}</strong>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              Please choose a new secure password for your account.
+            </p>
+            <div>
+              <label htmlFor="resetPasswordVal" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                New Password
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="resetPasswordVal"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={resetPasswordVal}
+                  onChange={(e) => setResetPasswordVal(e.target.value)}
+                  placeholder="•••••••• (min 6 characters)"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={resetLoading}
+              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+            >
+              {resetLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Updating Password...
+                </>
+              ) : (
+                'Reset Password'
+              )}
+            </button>
+          </form>
+        )}
       </Modal>
+
 
 
       {/* Right side: Modern visual abstract art */}
