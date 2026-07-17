@@ -187,10 +187,10 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Google Direct Login handler (Simulated)
-  const googleLogin = async (email, password) => {
+  // Google Direct Login handler (OAuth Credential)
+  const googleLogin = async (credential) => {
     try {
-      const response = await api.post('/user/google-login', { email, password })
+      const response = await api.post('/user/google-login', { credential })
       const data = response.data
       if (data.status === 'SUCCESS' && data.token) {
         const decoded = decodeToken(data.token)
@@ -215,6 +215,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
   }
+
 
 
 
