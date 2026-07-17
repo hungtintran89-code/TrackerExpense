@@ -198,7 +198,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('token', data.token)
           setToken(data.token)
           setUser({ id: decoded.id, name: decoded.name, email: decoded.email, auth_provider: decoded.auth_provider })
-          return { success: true, status: 'SUCCESS' }
+          return { success: true, status: 'SUCCESS', name: decoded.name }
+
         }
       }
       return {

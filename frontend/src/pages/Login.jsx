@@ -25,6 +25,10 @@ export default function Login() {
   const [googlePassword, setGooglePassword] = useState('')
   const [onboardingTicket, setOnboardingTicket] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [savedAccounts, setSavedAccounts] = useState(() => {
+    const accounts = localStorage.getItem('google_saved_accounts')
+    return accounts ? JSON.parse(accounts) : []
+  })
 
   // Forgot Password States
   const [showResetModal, setShowResetModal] = useState(false)
@@ -55,6 +59,12 @@ export default function Login() {
       if (result.status === 'SUCCESS') {
         showToast('Successfully logged in with Google!', 'success')
         setShowGoogleModal(false)
+
+        // Save account to local history
+        const updatedAccounts = [...savedAccounts.filter(a => a.email !== googleEmail.trim()), { email: googleEmail.trim(), name: result.name }]
+        localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
+        setSavedAccounts(updatedAccounts)
+
         navigate('/dashboard')
       } else if (result.status === 'ONBOARDING_REQUIRED') {
         showToast('Google account verified. Please complete your profile setup.', 'info')
@@ -83,6 +93,12 @@ export default function Login() {
     if (result.success) {
       showToast('Account created successfully! Welcome to Expense Tracker.', 'success')
       setShowGoogleModal(false)
+
+      // Save account to local history
+      const updatedAccounts = [...savedAccounts.filter(a => a.email !== googleEmail.trim()), { email: googleEmail.trim(), name: googleName.trim() }]
+      localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
+      setSavedAccounts(updatedAccounts)
+
       navigate('/dashboard')
     } else {
       setGoogleLoading(false)
@@ -394,27 +410,55 @@ export default function Login() {
             </p>
             
             {/* Quick account presets to simulate Google account chooser */}
-            <div class="space-y-2">
-              <button
-                type="button"
-                onClick={() => setGoogleEmail('hungtintran89@gmail.com')}
-                class="flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-900 p-3 hover:bg-slate-100 dark:hover:bg-dark-800 transition text-left"
-              >
-                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
-                  H
+            {savedAccounts.length > 0 && (
+              <>
+                <div class="space-y-2">
+                  {savedAccounts.map((acc, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setGoogleEmail(acc.email)
+                        // Trigger login submit automatically for this clicked account
+                        setGoogleLoading(true)
+                        googleLogin(acc.email).then(result => {
+                          setGoogleLoading(false)
+                          if (result.success) {
+                            if (result.status === 'SUCCESS') {
+                              showToast('Successfully logged in with Google!', 'success')
+                              setShowGoogleModal(false)
+                              navigate('/dashboard')
+                            } else {
+                              setOnboardingTicket(result.onboarding_ticket)
+                              setGoogleName(acc.email.split('@')[0])
+                              setGoogleStep(2)
+                            }
+                          } else {
+                            showToast(result.message, 'error')
+                          }
+                        })
+                      }}
+                      class="flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-900 p-3 hover:bg-slate-100 dark:hover:bg-dark-800 transition text-left"
+                    >
+                      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+                        {acc.name ? acc.name.charAt(0).toUpperCase() : acc.email.charAt(0).toUpperCase()}
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{acc.name || 'Google Account'}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{acc.email}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">Hưng Tín Trần</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate">hungtintran89@gmail.com</p>
-                </div>
-              </button>
-            </div>
 
-            <div class="relative flex py-2 items-center">
-              <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
-              <span class="flex-shrink mx-4 text-slate-400 text-xs">Or use another account</span>
-              <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
-            </div>
+                <div class="relative flex py-2 items-center">
+                  <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
+                  <span class="flex-shrink mx-4 text-slate-400 text-xs">Or use another account</span>
+                  <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
+                </div>
+              </>
+            )}
+
 
             <div>
               <label htmlFor="googleEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
