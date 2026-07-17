@@ -11,8 +11,10 @@ public class UserRegisterService {
 
 
     public static User register (HttpExchange httpExchange ){
-        System.out.println(">>> userRegisterController");
         User user = TranferController.fromString( httpExchange.getRequestBody() , User.class) ;
+        if (user != null) {
+            System.out.println(">>> userRegisterController - Đăng ký mới: " + user.getEmail() + " (Tên: " + user.getName() + ")");
+        }
         if (user == null) {
             System.out.println("user is NULL");
             return null;

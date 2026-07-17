@@ -21,6 +21,7 @@ public class UserLoginService {
             String username = Optional.ofNullable(userclient.getName())
                     .or(() -> Optional.ofNullable(userclient.getEmail()))
                     .orElse("errror");
+            System.out.println(">>> userLoginController - Email đăng nhập: " + username);
             if (username.equals("error")) {
                 return username;
             }
