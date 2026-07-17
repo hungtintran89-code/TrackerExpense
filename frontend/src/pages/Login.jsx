@@ -19,28 +19,15 @@ export default function Login() {
 
   // Google Sign-In & Onboarding States
   const [showGoogleModal, setShowGoogleModal] = useState(false)
-  const [googleStep, setGoogleStep] = useState(1) // 1: Choose Account, 2: Onboarding Setup
+  const [googleStep, setGoogleStep] = useState(1) // 1: Email, 2: Password, 3: Onboarding Name Setup
   const [googleEmail, setGoogleEmail] = useState('')
-  const [googleName, setGoogleName] = useState('')
   const [googlePassword, setGooglePassword] = useState('')
+  const [googleName, setGoogleName] = useState('')
   const [onboardingTicket, setOnboardingTicket] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [savedAccounts, setSavedAccounts] = useState(() => {
-    const accounts = localStorage.getItem('google_saved_accounts')
-    return accounts ? JSON.parse(accounts) : []
-  })
 
-  // Forgot Password States
-  const [showResetModal, setShowResetModal] = useState(false)
-  const [resetStep, setResetStep] = useState(1) // 1: Email, 2: OTP, 3: New Password
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetOtp, setResetOtp] = useState('')
-  const [resetToken, setResetToken] = useState('')
-  const [resetPasswordVal, setResetPasswordVal] = useState('')
-  const [resetLoading, setResetLoading] = useState(false)
-
-  // Handle Google Login request (Simulated Account Chooser step)
-  const handleGoogleLoginSubmit = async (e) => {
+  // Step 1: Handle Google Email submit
+  const handleGoogleEmailSubmit = (e) => {
     e.preventDefault()
     const targetEmail = googleEmail.trim().toLowerCase()
     if (!targetEmail) {
@@ -51,43 +38,11 @@ export default function Login() {
       showToast('Please enter a valid Gmail address (@gmail.com).', 'warning')
       return
     }
-
-    // Check if the account is already saved/authorized on this device
-    const isSaved = savedAccounts.some(acc => acc.email === targetEmail)
-
-    setGoogleLoading(true)
-    const result = await googleLogin(targetEmail, null, isSaved)
-    setGoogleLoading(false)
-
-    if (result.success) {
-      if (result.status === 'SUCCESS') {
-        showToast('Successfully logged in with Google!', 'success')
-        setShowGoogleModal(false)
-
-        // Save account to local history
-        const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: result.name }]
-        localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
-        setSavedAccounts(updatedAccounts)
-
-        navigate('/dashboard')
-      } else if (result.status === 'VERIFICATION_REQUIRED') {
-        showToast('Tài khoản đã đăng ký. Vui lòng xác minh mật khẩu để ủy quyền thiết bị.', 'info')
-        setGooglePassword('')
-        setGoogleStep(3) // Move to password verification screen
-      } else if (result.status === 'ONBOARDING_REQUIRED') {
-        showToast('Google account verified. Please complete your profile setup.', 'info')
-        setOnboardingTicket(result.onboarding_ticket)
-        setGoogleName(targetEmail.split('@')[0])
-        setGooglePassword('')
-        setGoogleStep(2) // Move to onboarding screen
-      }
-    } else {
-      showToast(result.message, 'error')
-    }
+    setGoogleStep(2) // Move to password step
   }
 
-  // Handle Google Password verification for unauthorized devices
-  const handleGoogleVerifyPasswordSubmit = async (e) => {
+  // Step 2: Handle Google Password verification/login
+  const handleGooglePasswordSubmit = async (e) => {
     e.preventDefault()
     const targetEmail = googleEmail.trim().toLowerCase()
     if (!googlePassword) {
@@ -96,30 +51,30 @@ export default function Login() {
     }
 
     setGoogleLoading(true)
-    const result = await googleLogin(targetEmail, googlePassword, false)
+    const result = await googleLogin(targetEmail, googlePassword)
     setGoogleLoading(false)
 
-    if (result.success && result.status === 'SUCCESS') {
-      showToast('Xác minh thành công và đã ủy quyền thiết bị!', 'success')
-      setShowGoogleModal(false)
-
-      // Save account to local history
-      const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: result.name }]
-      localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
-      setSavedAccounts(updatedAccounts)
-
-      navigate('/dashboard')
+    if (result.success) {
+      if (result.status === 'SUCCESS') {
+        showToast('Successfully logged in with Google!', 'success')
+        setShowGoogleModal(false)
+        navigate('/dashboard')
+      } else if (result.status === 'ONBOARDING_REQUIRED') {
+        showToast('Google account verified. Please complete your profile display name.', 'info')
+        setOnboardingTicket(result.onboarding_ticket)
+        setGoogleName(targetEmail.split('@')[0])
+        setGoogleStep(3) // Move to onboarding name setup
+      }
     } else {
       showToast(result.message || 'Mật khẩu xác minh không chính xác.', 'error')
     }
   }
 
-  // Handle Google Onboarding finalize registration
+  // Step 3: Handle Google Onboarding finalize registration (Display Name setup)
   const handleGoogleFinalizeSubmit = async (e) => {
     e.preventDefault()
-    const targetEmail = googleEmail.trim().toLowerCase()
-    if (!googleName.trim() || googlePassword.length < 6) {
-      showToast('Name is required, and password must be at least 6 characters.', 'warning')
+    if (!googleName.trim()) {
+      showToast('Name is required.', 'warning')
       return
     }
 
@@ -130,18 +85,21 @@ export default function Login() {
     if (result.success) {
       showToast('Account created successfully! Welcome to Expense Tracker.', 'success')
       setShowGoogleModal(false)
-
-      // Save account to local history
-      const updatedAccounts = [...savedAccounts.filter(a => a.email !== targetEmail), { email: targetEmail, name: googleName.trim() }]
-      localStorage.setItem('google_saved_accounts', JSON.stringify(updatedAccounts))
-      setSavedAccounts(updatedAccounts)
-
       navigate('/dashboard')
     } else {
       setGoogleLoading(false)
       showToast(result.message, 'error')
     }
   }
+
+  // Forgot Password States
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetStep, setResetStep] = useState(1) // 1: Email, 2: OTP, 3: New Password
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetOtp, setResetOtp] = useState('')
+  const [resetToken, setResetToken] = useState('')
+  const [resetPasswordVal, setResetPasswordVal] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
 
 
   // Handle Forgot Password OTP request
@@ -442,60 +400,11 @@ export default function Login() {
         </div>
 
         {googleStep === 1 && (
-          <form onSubmit={handleGoogleLoginSubmit} class="space-y-4">
+          <form onSubmit={handleGoogleEmailSubmit} class="space-y-4">
             <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Choose your Google account to log in directly to Expense Tracker.
+              Sign in with your Google account.
             </p>
-            
-            {/* Quick account presets to simulate Google account chooser */}
-            {savedAccounts.length > 0 && (
-              <>
-                <div class="space-y-2">
-                  {savedAccounts.map((acc, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setGoogleEmail(acc.email)
-                        // Trigger login submit automatically for this clicked account (device is verified)
-                        setGoogleLoading(true)
-                        googleLogin(acc.email, null, true).then(result => {
-                          setGoogleLoading(false)
-                          if (result.success) {
-                            if (result.status === 'SUCCESS') {
-                              showToast('Successfully logged in with Google!', 'success')
-                              setShowGoogleModal(false)
-                              navigate('/dashboard')
-                            } else {
-                              setOnboardingTicket(result.onboarding_ticket)
-                              setGoogleName(acc.email.split('@')[0])
-                              setGoogleStep(2)
-                            }
-                          } else {
-                            showToast(result.message, 'error')
-                          }
-                        })
-                      }}
-                      class="flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-dark-800 bg-slate-50 dark:bg-dark-900 p-3 hover:bg-slate-100 dark:hover:bg-dark-800 transition text-left"
-                    >
-                      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
-                        {acc.name ? acc.name.charAt(0).toUpperCase() : acc.email.charAt(0).toUpperCase()}
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{acc.name || 'Google Account'}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{acc.email}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
 
-                <div class="relative flex py-2 items-center">
-                  <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
-                  <span class="flex-shrink mx-4 text-slate-400 text-xs">Or use another account</span>
-                  <div class="flex-grow border-t border-slate-200 dark:border-dark-800"></div>
-                </div>
-              </>
-            )}
 
             <div>
               <label htmlFor="googleEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -522,51 +431,21 @@ export default function Login() {
               disabled={googleLoading}
               class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
             >
-              {googleLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                'Next'
-              )}
+              Next
             </button>
           </form>
         )}
 
         {googleStep === 2 && (
-          <form onSubmit={handleGoogleFinalizeSubmit} class="space-y-4">
+          <form onSubmit={handleGooglePasswordSubmit} class="space-y-4">
             <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
-              <span class="text-xs text-slate-500 dark:text-slate-400 block">Google account verified</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Google Account</span>
               <strong class="text-sm text-slate-700 dark:text-slate-200">{googleEmail}</strong>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Welcome! Please set a display name and password to complete your account setup. You can use these credentials to log in later.
-            </p>
-            
-            <div>
-              <label htmlFor="googleName" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Display Name
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <User className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="googleName"
-                  type="text"
-                  required
-                  value={googleName}
-                  onChange={(e) => setGoogleName(e.target.value)}
-                  placeholder="Your display name"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
             </div>
 
             <div>
               <label htmlFor="googlePassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Create Password
+                Password
               </label>
               <div class="relative mt-1.5 rounded-xl shadow-sm">
                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -574,54 +453,6 @@ export default function Login() {
                 </div>
                 <input
                   id="googlePassword"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={googlePassword}
-                  onChange={(e) => setGooglePassword(e.target.value)}
-                  placeholder="•••••••• (min 6 characters)"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={googleLoading}
-              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-            >
-              {googleLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Creating Account...
-                </>
-              ) : (
-                'Finalize & Sign In'
-              )}
-            </button>
-          </form>
-        )}
-
-        {googleStep === 3 && (
-          <form onSubmit={handleGoogleVerifyPasswordSubmit} class="space-y-4">
-            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
-              <span class="text-xs text-slate-500 dark:text-slate-400 block">Xác minh Google account</span>
-              <strong class="text-sm text-slate-700 dark:text-slate-200">{googleEmail}</strong>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
-              Thiết bị này chưa được ủy quyền sử dụng tài khoản này. Vui lòng nhập mật khẩu tài khoản Google bạn đã thiết lập lúc đăng ký.
-            </p>
-            
-            <div>
-              <label htmlFor="googleVerifyPassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Nhập mật khẩu tài khoản
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="googleVerifyPassword"
                   type="password"
                   required
                   value={googlePassword}
@@ -648,17 +479,73 @@ export default function Login() {
                 {googleLoading ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Verifying...
+                    Signing In...
                   </>
                 ) : (
-                  'Verify & Log In'
+                  'Sign In'
                 )}
               </button>
             </div>
           </form>
         )}
 
+        {googleStep === 3 && (
+          <form onSubmit={handleGoogleFinalizeSubmit} class="space-y-4">
+            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Google account verified</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{googleEmail}</strong>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              Welcome! Please set a display name to complete your Google account registration.
+            </p>
+            
+            <div>
+              <label htmlFor="googleName" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Display Name
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <User className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="googleName"
+                  type="text"
+                  required
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
+                  placeholder="Your display name"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setGoogleStep(2)}
+                class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={googleLoading}
+                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+              >
+                {googleLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Finalizing...
+                  </>
+                ) : (
+                  'Finalize & Sign In'
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
+
 
       {/* Forgot Password Reset Modal */}
       <Modal

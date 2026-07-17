@@ -188,13 +188,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Google Direct Login handler (Simulated)
-  const googleLogin = async (email, password = null, deviceVerified = false) => {
+  const googleLogin = async (email, password) => {
     try {
-      const response = await api.post('/user/google-login', {
-        email,
-        password,
-        device_verified: deviceVerified
-      })
+      const response = await api.post('/user/google-login', { email, password })
       const data = response.data
       if (data.status === 'SUCCESS' && data.token) {
         const decoded = decodeToken(data.token)
@@ -202,7 +198,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('token', data.token)
           setToken(data.token)
           setUser({ id: decoded.id, name: decoded.name, email: decoded.email, auth_provider: decoded.auth_provider })
-          return { success: true, status: 'SUCCESS', name: decoded.name }
+          return { success: true, status: 'SUCCESS' }
         }
       }
       return {
@@ -219,6 +215,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
   }
+
 
 
   // Google Onboarding Finalize handler
