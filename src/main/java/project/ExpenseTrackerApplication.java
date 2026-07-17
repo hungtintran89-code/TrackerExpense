@@ -53,21 +53,15 @@ public class ExpenseTrackerApplication {
                         }
                     } else if (lastSegment.equals("login")) {
                         responseService.SendResponse(httpExchange, userController.userLoginController(httpExchange));
-                    } else if (lastSegment.equals("google-login")) {
+                    } else if (lastSegment.equals("google-otp-request")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
-                            responseService.SendResponse(httpExchange, userController.googleLogin(httpExchange));
+                            responseService.SendResponse(httpExchange, userController.requestGoogleOtp(httpExchange));
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }
-                    } else if (lastSegment.equals("otp-login-request")) {
+                    } else if (lastSegment.equals("google-otp-confirm")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
-                            responseService.SendResponse(httpExchange, userController.requestPasswordlessOtp(httpExchange));
-                        } else {
-                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
-                        }
-                    } else if (lastSegment.equals("otp-login-confirm")) {
-                        if (httpExchange.getRequestMethod().equals("POST")) {
-                            responseService.SendResponse(httpExchange, userController.confirmPasswordlessOtp(httpExchange));
+                            responseService.SendResponse(httpExchange, userController.confirmGoogleOtp(httpExchange));
                         } else {
                             responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
                         }

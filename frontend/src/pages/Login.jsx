@@ -6,7 +6,7 @@ import Modal from '../components/Modal'
 import { Wallet, Mail, Lock, Eye, EyeOff, Loader2, Key, Sparkles } from 'lucide-react'
 
 export default function Login() {
-  const { login, googleLogin, otpLoginRequest, otpLoginConfirm, user } = useAuth()
+  const { login, googleLogin, googleOtpRequest, googleOtpConfirm, user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -17,42 +17,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Passwordless OTP Login States
+  // Google Login OTP Verification States
   const [showOtpModal, setShowOtpModal] = useState(false)
-  const [otpStep, setOtpStep] = useState(1) // 1 for email, 2 for OTP code
   const [otpEmail, setOtpEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
 
-  const handleRequestOtp = async (e) => {
-    e.preventDefault()
-    if (!otpEmail.trim()) {
-      showToast('Please enter your email address.', 'warning')
-      return
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(otpEmail.trim())) {
-      showToast('Please enter a valid email address.', 'warning')
-      return
-    }
-
-    setOtpLoading(true)
-    const result = await otpLoginRequest(otpEmail.trim())
-    setOtpLoading(false)
+  const handleGoogleLogin = async (response) => {
+    setLoading(true)
+    setError('')
+    const result = await googleOtpRequest(response.credential)
+    setLoading(false)
 
     if (result.success) {
-      showToast('Verification code generated. Please check your email.', 'success')
+      setOtpEmail(result.email)
+      setOtpCode('')
+      showToast(result.message, 'success')
       if (result.otp) {
-        console.log("Simulated Login OTP:", result.otp)
-        showToast(`[Simulation] Login OTP is: ${result.otp}`, 'info')
+        console.log("Simulated Google Login OTP:", result.otp)
+        showToast(`[Simulation] OTP for ${result.email} is: ${result.otp}`, 'info')
       }
-      setOtpStep(2)
+      setShowOtpModal(true)
     } else {
+      setError(result.message)
       showToast(result.message, 'error')
     }
   }
 
-  const handleConfirmOtp = async (e) => {
+  const handleVerifyGoogleOtp = async (e) => {
     e.preventDefault()
     if (!otpCode.trim()) {
       showToast('Please enter the verification code.', 'warning')
@@ -60,29 +52,14 @@ export default function Login() {
     }
 
     setOtpLoading(true)
-    const result = await otpLoginConfirm(otpEmail.trim(), otpCode.trim())
+    const result = await googleOtpConfirm(otpEmail, otpCode.trim())
     setOtpLoading(false)
 
     if (result.success) {
-      showToast('Logged in successfully!', 'success')
+      showToast('Welcome back! You have successfully signed in.', 'success')
       setShowOtpModal(false)
       navigate('/dashboard')
     } else {
-      showToast(result.message, 'error')
-    }
-  }
-
-  const handleGoogleLogin = async (response) => {
-    setLoading(true)
-    setError('')
-    const result = await googleLogin(response.credential)
-    setLoading(false)
-
-    if (result.success) {
-      showToast('Welcome back! You have successfully signed in with Google.', 'success')
-      navigate('/dashboard')
-    } else {
-      setError(result.message)
       showToast(result.message, 'error')
     }
   }
@@ -277,119 +254,55 @@ export default function Login() {
           <div class="flex justify-center w-full">
             <div id="googleSignInDiv" class="w-full flex justify-center"></div>
           </div>
-
-          {/* OTP Passwordless Sign-In Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setOtpStep(1)
-              setOtpEmail('')
-              setOtpCode('')
-              setShowOtpModal(true)
-            }}
-            class="mt-4 flex w-full items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
-          >
-            <Sparkles className="h-5 w-5 text-indigo-500" />
-            Fast Login via OTP (No Password)
-          </button>
         </div>
+
       </div>
 
-      {/* OTP Passwordless Login Modal */}
+      {/* Google Login OTP Verification Modal */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
-        title={otpStep === 1 ? "Fast Login via OTP" : "Enter Verification Code"}
+        title="Google Login Verification"
       >
-        {otpStep === 1 ? (
-          <form onSubmit={handleRequestOtp} class="space-y-4">
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-              Enter your email address. We will generate and send a 6-digit login OTP code. If you do not have an account, a new one will be registered automatically!
-            </p>
-            <div>
-              <label htmlFor="otpEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Email Address
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="otpEmail"
-                  type="email"
-                  required
-                  value={otpEmail}
-                  onChange={(e) => setOtpEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
+        <form onSubmit={handleVerifyGoogleOtp} class="space-y-4">
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            A 6-digit login OTP code was generated for your Google account <strong>{otpEmail}</strong>. Please enter the code below to complete sign-in.
+          </p>
+          <div>
+            <label htmlFor="otpCode" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Verification Code (OTP)
+            </label>
+            <div class="relative mt-1.5 rounded-xl shadow-sm">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </div>
+              <input
+                id="otpCode"
+                type="text"
+                required
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="123456"
+                class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+              />
             </div>
-            <button
-              type="submit"
-              disabled={otpLoading}
-              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-            >
-              {otpLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Generating OTP...
-                </>
-              ) : (
-                'Send OTP Code'
-              )}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleConfirmOtp} class="space-y-4">
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-              A 6-digit login OTP code was generated for <strong>{otpEmail}</strong>. Please enter the code below to sign in.
-            </p>
-            <div>
-              <label htmlFor="otpCode" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Verification Code (OTP)
-              </label>
-              <div class="relative mt-1.5 rounded-xl shadow-sm">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  id="otpCode"
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="123456"
-                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-            <div class="flex justify-between gap-3.5">
-              <button
-                type="button"
-                onClick={() => setOtpStep(1)}
-                class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={otpLoading}
-                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-              >
-                {otpLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify & Sign In'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+          </div>
+          <button
+            type="submit"
+            disabled={otpLoading}
+            class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+          >
+            {otpLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify & Sign In'
+            )}
+          </button>
+        </form>
       </Modal>
 
       {/* Right side: Modern visual abstract art */}

@@ -44,20 +44,12 @@ public class UserController {
         return new Response(String.valueOf(checkPassword), 200);
     }
 
-    public Response googleLogin(HttpExchange httpExchange) {
-        String token = service.GoogleAuthService.verifyAndLogin(httpExchange);
-        if (token == null || token.startsWith("Error")) {
-            return new Response(token != null ? token : "Google auth failed!", 400);
-        }
-        return new Response(token, 200);
+    public Response requestGoogleOtp(HttpExchange httpExchange) {
+        return service.GoogleOtpService.requestOtp(httpExchange);
     }
 
-    public Response requestPasswordlessOtp(HttpExchange httpExchange) {
-        return service.PasswordlessOtpService.requestOtp(httpExchange);
-    }
-
-    public Response confirmPasswordlessOtp(HttpExchange httpExchange) {
-        return service.PasswordlessOtpService.confirmOtp(httpExchange);
+    public Response confirmGoogleOtp(HttpExchange httpExchange) {
+        return service.GoogleOtpService.confirmOtp(httpExchange);
     }
 
     public Response changePassword(HttpExchange httpExchange, User user) {

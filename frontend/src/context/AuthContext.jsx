@@ -212,24 +212,29 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Passwordless OTP Login Request (Step 1)
-  const otpLoginRequest = async (email) => {
+  // Google OTP Request handler (Step 1)
+  const googleOtpRequest = async (googleIdToken) => {
     try {
-      const response = await api.post('/user/otp-login-request', { email })
-      return { success: true, message: response.data?.message || 'OTP code sent.', otp: response.data?.otp }
+      const response = await api.post('/user/google-otp-request', { token: googleIdToken })
+      return {
+        success: true,
+        message: response.data?.message || 'Verification code sent.',
+        email: response.data?.email,
+        otp: response.data?.otp
+      }
     } catch (error) {
-      console.error('OTP login request error:', error)
+      console.error('Google OTP request error:', error)
       return {
         success: false,
-        message: error.response?.data || 'Failed to request OTP login.'
+        message: error.response?.data || 'Failed to authenticate Google account or send OTP.'
       }
     }
   }
 
-  // Passwordless OTP Login Confirm (Step 2)
-  const otpLoginConfirm = async (email, otp) => {
+  // Google OTP Confirm handler (Step 2)
+  const googleOtpConfirm = async (email, otp) => {
     try {
-      const response = await api.post('/user/otp-login-confirm', { email, otp })
+      const response = await api.post('/user/google-otp-confirm', { email, otp })
       const data = response.data
 
       if (typeof data === 'string' && data.startsWith('eyJ')) {
@@ -243,16 +248,17 @@ export const AuthProvider = ({ children }) => {
       }
       return {
         success: false,
-        message: typeof data === 'string' ? data : 'Authentication failed.'
+        message: typeof data === 'string' ? data : 'Google Verification failed.'
       }
     } catch (error) {
-      console.error('OTP login confirm error:', error)
+      console.error('Google OTP confirm error:', error)
       return {
         success: false,
-        message: error.response?.data || 'Failed to verify OTP.'
+        message: error.response?.data || 'Invalid verification code.'
       }
     }
   }
+
 
   // Register handler
   const register = async (name, email, password) => {
@@ -300,7 +306,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user, token, loading, login, googleLogin, register, registerRequest, registerConfirm,
-      otpLoginRequest, otpLoginConfirm, logout, darkMode, toggleDarkMode, updateToken,
+      googleOtpRequest, googleOtpConfirm, logout, darkMode, toggleDarkMode, updateToken,
       wallets, setWallets, pendingInvitations, setPendingInvitations,
       selectedWalletId, setSelectedWalletId, fetchWallets, fetchInvitations
     }}>
