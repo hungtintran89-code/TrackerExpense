@@ -74,10 +74,11 @@ export default function Login() {
   // Step 3: Handle Google Onboarding finalize registration (Display Name setup)
   const handleGoogleFinalizeSubmit = async (e) => {
     e.preventDefault()
-    if (!googleName.trim()) {
-      showToast('Name is required.', 'warning')
+    if (!googleName.trim() || googlePassword.length < 6) {
+      showToast('Name is required, and password must be at least 6 characters.', 'warning')
       return
     }
+
 
     setGoogleLoading(true)
     const result = await googleFinalize(onboardingTicket, googleName.trim(), googlePassword)
@@ -519,6 +520,28 @@ export default function Login() {
                 />
               </div>
             </div>
+
+            <div>
+              <label htmlFor="googleFinalizePassword" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Password (confirm or update)
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="googleFinalizePassword"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={googlePassword}
+                  onChange={(e) => setGooglePassword(e.target.value)}
+                  placeholder="••••••••"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
 
             <div class="flex gap-3">
               <button
