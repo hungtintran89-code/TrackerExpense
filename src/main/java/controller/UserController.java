@@ -16,10 +16,10 @@ public class UserController {
     public Response userRegisterController(HttpExchange httpExchange) {
         User u = UserRegisterService.register(httpExchange);
         if (u == null ){
-            return new Response("Register fail!", 400);
+            return new Response("Register fail because user is null!", 400);
         }
         if( !UserRepository.insert(u)){
-            return new Response("Register fail!", 400);
+            return new Response("Register fail because insert unsuccessfull!", 400);
         }
         else {
             return new Response("Register successfull!", 200);
