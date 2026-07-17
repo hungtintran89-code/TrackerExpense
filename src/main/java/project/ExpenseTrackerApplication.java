@@ -23,6 +23,7 @@ public class ExpenseTrackerApplication {
             database.DatabaseInitializer.initialize();
 
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
 
             server.createContext("/Health", (httpExchange) -> {
                 responseService.SendResponse(httpExchange, new Response("Server able...", 200));

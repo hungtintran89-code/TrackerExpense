@@ -14,7 +14,7 @@ public class UserRepository {
     public static boolean insert(User u) {
         String query = "INSERT INTO users ( name , email , password ) VALUES ( ? , ? , ? )";
         try (Connection connection = configConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, u.getName());
             preparedStatement.setString(2, u.getEmail());
             preparedStatement.setString(3, u.getPassword());
