@@ -19,27 +19,39 @@ export default function Login() {
 
   // Google Login OTP Verification States
   const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpStep, setOtpStep] = useState(1) // 1 for email, 2 for OTP code
   const [otpEmail, setOtpEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
 
-  const handleGoogleLogin = async (response) => {
-    setLoading(true)
-    setError('')
-    const result = await googleOtpRequest(response.credential)
-    setLoading(false)
+  const handleRequestGoogleOtp = async (e) => {
+    e.preventDefault()
+    if (!otpEmail.trim()) {
+      showToast('Please enter your Google email address.', 'warning')
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(otpEmail.trim())) {
+      showToast('Please enter a valid email address.', 'warning')
+      return
+    }
+    if (!otpEmail.trim().endsWith('@gmail.com')) {
+      showToast('Only Gmail addresses (@gmail.com) are supported for Google Login.', 'warning')
+      return
+    }
+
+    setOtpLoading(true)
+    const result = await googleOtpRequest(otpEmail.trim())
+    setOtpLoading(false)
 
     if (result.success) {
-      setOtpEmail(result.email)
-      setOtpCode('')
       showToast(result.message, 'success')
       if (result.otp) {
         console.log("Simulated Google Login OTP:", result.otp)
         showToast(`[Simulation] OTP for ${result.email} is: ${result.otp}`, 'info')
       }
-      setShowOtpModal(true)
+      setOtpStep(2)
     } else {
-      setError(result.message)
       showToast(result.message, 'error')
     }
   }
@@ -64,30 +76,7 @@ export default function Login() {
     }
   }
 
-  useEffect(() => {
-    const initGoogleSignIn = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          // This client_id can be overridden via environment variables
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '725350393091-m0tflfpt117r3qnt2t6p0h4gqpgj0p1a.apps.googleusercontent.com',
-          callback: handleGoogleLogin,
-        })
-        window.google.accounts.id.renderButton(
-          document.getElementById('googleSignInDiv'),
-          { theme: 'outline', size: 'large', width: '380px' }
-        )
-      }
-    }
 
-    const timer = setInterval(() => {
-      if (window.google) {
-        initGoogleSignIn()
-        clearInterval(timer)
-      }
-    }, 100)
-
-    return () => clearInterval(timer)
-  }, [])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -250,60 +239,151 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Google Sign-In Button */}
-          <div class="flex justify-center w-full">
-            <div id="googleSignInDiv" class="w-full flex justify-center"></div>
-          </div>
+          {/* Google Sig          {/* Custom Google Sign-In Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setOtpStep(1)
+              setOtpEmail('')
+              setOtpCode('')
+              setShowOtpModal(true)
+            }}
+            class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path
+                fill="#EA4335"
+                d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.354 0 3.373 2.736 1.49 6.727l3.776 3.038z"
+              />
+              <path
+                fill="#34A853"
+                d="M16.04 15.345c-1.073.727-2.427 1.164-4.04 1.164-2.927 0-5.418-1.982-6.3-4.654L1.873 14.9C3.782 18.9 7.8 21.6 12 21.6c3.136 0 6.01-1.09 8.164-3l-4.124-3.255z"
+              />
+              <path
+                fill="#4285F4"
+                d="M22.527 12.3c0-.627-.054-1.282-.163-1.882H12v3.709h5.918c-.245 1.282-.982 2.373-2.073 3.09l4.124 3.255C22.382 18.255 24 14.818 24 12c0-.3 0-.6-.055-.9H22.527z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.266 11.836c-.245-.727-.382-1.509-.382-2.327 0-.818.137-1.6.382-2.327L1.49 4.145C.536 6.073 0 8.218 0 10.473c0 2.255.536 4.4 1.49 6.327l3.776-2.964z"
+              />
+            </svg>
+            Sign in with Google
+          </button>
         </div>
-
       </div>
 
       {/* Google Login OTP Verification Modal */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
-        title="Google Login Verification"
+        title={otpStep === 1 ? "Sign in - Google Accounts" : "Verify Gmail Access"}
       >
-        <form onSubmit={handleVerifyGoogleOtp} class="space-y-4">
-          <p class="text-sm text-slate-600 dark:text-slate-400">
-            A 6-digit login OTP code was generated for your Google account <strong>{otpEmail}</strong>. Please enter the code below to complete sign-in.
-          </p>
-          <div>
-            <label htmlFor="otpCode" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Verification Code (OTP)
-            </label>
-            <div class="relative mt-1.5 rounded-xl shadow-sm">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+        <div class="flex flex-col items-center mb-6">
+          <svg className="h-10 w-10 mb-2" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.354 0 3.373 2.736 1.49 6.727l3.776 3.038z" />
+            <path fill="#34A853" d="M16.04 15.345c-1.073.727-2.427 1.164-4.04 1.164-2.927 0-5.418-1.982-6.3-4.654L1.873 14.9C3.782 18.9 7.8 21.6 12 21.6c3.136 0 6.01-1.09 8.164-3l-4.124-3.255z" />
+            <path fill="#4285F4" d="M22.527 12.3c0-.627-.054-1.282-.163-1.882H12v3.709h5.918c-.245 1.282-.982 2.373-2.073 3.09l4.124 3.255C22.382 18.255 24 14.818 24 12c0-.3 0-.6-.055-.9H22.527z" />
+            <path fill="#FBBC05" d="M5.266 11.836c-.245-.727-.382-1.509-.382-2.327 0-.818.137-1.6.382-2.327L1.49 4.145C.536 6.073 0 8.218 0 10.473c0 2.255.536 4.4 1.49 6.327l3.776-2.964z" />
+          </svg>
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Google Authentication</span>
+        </div>
+
+        {otpStep === 1 ? (
+          <form onSubmit={handleRequestGoogleOtp} class="space-y-4">
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              Use your Google Account. Enter your Gmail address below to receive an OTP login code.
+            </p>
+            <div>
+              <label htmlFor="otpEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Email or phone
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="otpEmail"
+                  type="email"
+                  required
+                  value={otpEmail}
+                  onChange={(e) => setOtpEmail(e.target.value)}
+                  placeholder="example@gmail.com"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
               </div>
-              <input
-                id="otpCode"
-                type="text"
-                required
-                maxLength={6}
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                placeholder="123456"
-                class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
-              />
             </div>
-          </div>
-          <button
-            type="submit"
-            disabled={otpLoading}
-            class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
-          >
-            {otpLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Verifying...
-              </>
-            ) : (
-              'Verify & Sign In'
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={otpLoading}
+              class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+            >
+              {otpLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Requesting...
+                </>
+              ) : (
+                'Next'
+              )}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyGoogleOtp} class="space-y-4">
+            <div class="rounded-xl bg-slate-50 dark:bg-dark-900 p-3 text-center border border-slate-100 dark:border-dark-800">
+              <span class="text-xs text-slate-500 dark:text-slate-400 block">Signing in as</span>
+              <strong class="text-sm text-slate-700 dark:text-slate-200">{otpEmail}</strong>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 text-center">
+              We generated a 6-digit OTP code to this Gmail account. Please check your inbox and fill it in.
+            </p>
+            <div>
+              <label htmlFor="otpCode" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Enter 6-digit OTP
+              </label>
+              <div class="relative mt-1.5 rounded-xl shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  id="otpCode"
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="123456"
+                  class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+            <div class="flex justify-between gap-3.5">
+              <button
+                type="button"
+                onClick={() => setOtpStep(1)}
+                class="flex w-1/3 items-center justify-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:hover:bg-dark-850 transition-all duration-200"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={otpLoading}
+                class="flex w-2/3 items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify & Sign In'
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
+
 
       {/* Right side: Modern visual abstract art */}
       <div class="hidden lg:flex w-1/2 relative overflow-hidden bg-slate-900 dark:bg-dark-900">

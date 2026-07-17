@@ -213,9 +213,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Google OTP Request handler (Step 1)
-  const googleOtpRequest = async (googleIdToken) => {
+  const googleOtpRequest = async (email) => {
     try {
-      const response = await api.post('/user/google-otp-request', { token: googleIdToken })
+      const response = await api.post('/user/google-otp-request', { email })
       return {
         success: true,
         message: response.data?.message || 'Verification code sent.',
