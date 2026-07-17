@@ -39,8 +39,26 @@ public class ExpenseTrackerApplication {
                     String lastSegment = url[url.length - 1];
                     if (lastSegment.equals("register")) {
                         responseService.SendResponse(httpExchange, userController.userRegisterController(httpExchange));
+                    } else if (lastSegment.equals("register-request")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, userController.requestSignupVerification(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
+                    } else if (lastSegment.equals("register-confirm")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, userController.confirmSignup(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
                     } else if (lastSegment.equals("login")) {
                         responseService.SendResponse(httpExchange, userController.userLoginController(httpExchange));
+                    } else if (lastSegment.equals("google-login")) {
+                        if (httpExchange.getRequestMethod().equals("POST")) {
+                            responseService.SendResponse(httpExchange, userController.googleLogin(httpExchange));
+                        } else {
+                            responseService.SendResponse(httpExchange, new Response("Method not allowed", 405));
+                        }
                     } else if (lastSegment.equals("forgot-password")) {
                         if (httpExchange.getRequestMethod().equals("POST")) {
                             responseService.SendResponse(httpExchange, service.PasswordResetService.forgotPassword(httpExchange));

@@ -154,6 +154,64 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Google Login handler
+  const googleLogin = async (googleIdToken) => {
+    try {
+      const response = await api.post('/user/google-login', { token: googleIdToken })
+      const data = response.data
+
+      if (typeof data === 'string' && data.startsWith('eyJ')) {
+        const decoded = decodeToken(data)
+        if (decoded) {
+          localStorage.setItem('token', data)
+          setToken(data)
+          setUser({ id: decoded.id, name: decoded.name, email: decoded.email })
+          return { success: true }
+        }
+      }
+      return {
+        success: false,
+        message: typeof data === 'string' ? data : 'Google Authentication failed.'
+      }
+    } catch (error) {
+      console.error('Google Login error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Google authentication failed. Please try again.'
+      }
+    }
+  }
+
+  // Register Request handler (Step 1)
+  const registerRequest = async (name, email, password) => {
+    try {
+      const payload = { name, email, password }
+      const response = await api.post('/user/register-request', payload)
+      return { success: true, message: response.data?.message || 'Verification code sent.', otp: response.data?.otp }
+    } catch (error) {
+      console.error('Register request error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Failed to request email verification.'
+      }
+    }
+  }
+
+  // Register Confirm handler (Step 2)
+  const registerConfirm = async (email, otp) => {
+    try {
+      const payload = { email, otp }
+      const response = await api.post('/user/register-confirm', payload)
+      return { success: true, message: response.data }
+    } catch (error) {
+      console.error('Register confirm error:', error)
+      return {
+        success: false,
+        message: error.response?.data || 'Email verification failed.'
+      }
+    }
+  }
+
   // Register handler
   const register = async (name, email, password) => {
     try {
@@ -199,7 +257,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, token, loading, login, register, logout, darkMode, toggleDarkMode, updateToken,
+      user, token, loading, login, googleLogin, register, registerRequest, registerConfirm, logout, darkMode, toggleDarkMode, updateToken,
       wallets, setWallets, pendingInvitations, setPendingInvitations,
       selectedWalletId, setSelectedWalletId, fetchWallets, fetchInvitations
     }}>

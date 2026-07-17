@@ -27,6 +27,11 @@ public class UserRegisterService {
             System.out.println("Email is NULL");
             return null;
         }
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+        if (!user.getEmail().matches(emailRegex)) {
+            System.out.println("Email invalid format");
+            return null;
+        }
         if( user.getPassword() == null ){
             System.out.println("Password is NULL");
             return null;

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { Wallet, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react'
+import Modal from '../components/Modal'
+import { Wallet, Mail, Lock, User, Eye, EyeOff, Loader2, Key } from 'lucide-react'
 
 export default function Register() {
-  const { register, user } = useAuth()
+  const { registerRequest, registerConfirm, user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
@@ -16,6 +17,11 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // OTP Verification States
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
 
   // Redirect if already logged in
   useEffect(() => {
@@ -37,6 +43,11 @@ export default function Register() {
       setError('Please enter your email address.')
       return
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
     if (password.length < 6) {
       setError('Password must be at least 6 characters long.')
       return
@@ -47,14 +58,38 @@ export default function Register() {
     }
 
     setLoading(true)
-    const result = await register(name, email, password)
+    const result = await registerRequest(name, email, password)
     setLoading(false)
 
     if (result.success) {
-      showToast('Registration successful! Please login.', 'success')
-      navigate('/login')
+      showToast('Verification code generated. Please check your email.', 'success')
+      if (result.otp) {
+        console.log("Simulated Signup OTP:", result.otp)
+        showToast(`[Simulation] Signup OTP is: ${result.otp}`, 'info')
+      }
+      setShowOtpModal(true)
     } else {
       setError(result.message)
+      showToast(result.message, 'error')
+    }
+  }
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    if (!otpCode.trim()) {
+      showToast('Please enter the verification code.', 'warning')
+      return
+    }
+
+    setVerifyingOtp(true)
+    const result = await registerConfirm(email, otpCode.trim())
+    setVerifyingOtp(false)
+
+    if (result.success) {
+      showToast('Verification successful! Account created.', 'success')
+      setShowOtpModal(false)
+      navigate('/login')
+    } else {
       showToast(result.message, 'error')
     }
   }
@@ -238,6 +273,52 @@ export default function Register() {
               )}
             </button>
           </form>
+      {/* OTP Verification Modal */}
+      <Modal 
+        isOpen={showOtpModal} 
+        onClose={() => setShowOtpModal(false)} 
+        title="Email Verification Required"
+      >
+        <form onSubmit={handleVerifyOtp} class="space-y-4">
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            We have generated a 6-digit verification code to confirm ownership of <strong>{email}</strong>. Please enter the code below to complete registration.
+          </p>
+          <div>
+            <label htmlFor="otp" class="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Verification Code (OTP)
+            </label>
+            <div class="relative mt-1.5 rounded-xl shadow-sm">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Key className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+              </div>
+              <input
+                id="otp"
+                type="text"
+                required
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="123456"
+                class="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-800 dark:bg-dark-900 dark:text-slate-50 dark:placeholder-slate-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={verifyingOtp}
+            class="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-primary-500/25 hover:from-primary-700 hover:to-indigo-700 focus:outline-none disabled:opacity-50 transition-all duration-200"
+          >
+            {verifyingOtp ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Verifying OTP...
+              </>
+            ) : (
+              'Confirm & Register'
+            )}
+          </button>
+        </form>
+      </Modal>
         </div>
       </div>
     </div>

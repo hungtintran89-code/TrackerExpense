@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast'
 import { Wallet, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function Login() {
-  const { login, user } = useAuth()
+  const { login, googleLogin, user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -15,6 +15,46 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleGoogleLogin = async (response) => {
+    setLoading(true)
+    setError('')
+    const result = await googleLogin(response.credential)
+    setLoading(false)
+
+    if (result.success) {
+      showToast('Welcome back! You have successfully signed in with Google.', 'success')
+      navigate('/dashboard')
+    } else {
+      setError(result.message)
+      showToast(result.message, 'error')
+    }
+  }
+
+  useEffect(() => {
+    const initGoogleSignIn = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          // This client_id can be overridden via environment variables
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '725350393091-m0tflfpt117r3qnt2t6p0h4gqpgj0p1a.apps.googleusercontent.com',
+          callback: handleGoogleLogin,
+        })
+        window.google.accounts.id.renderButton(
+          document.getElementById('googleSignInDiv'),
+          { theme: 'outline', size: 'large', width: '380px' }
+        )
+      }
+    }
+
+    const timer = setInterval(() => {
+      if (window.google) {
+        initGoogleSignIn()
+        clearInterval(timer)
+      }
+    }, 100)
+
+    return () => clearInterval(timer)
+  }, [])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -164,6 +204,23 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          {/* Google Divider */}
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center" aria-hidden="true">
+              <div class="w-full border-t border-slate-200 dark:border-dark-800"></div>
+            </div>
+            <div class="relative flex justify-center text-sm font-medium">
+              <span class="bg-slate-50 dark:bg-dark-950 px-3 text-slate-500 dark:text-slate-400">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign-In Button */}
+          <div class="flex justify-center w-full">
+            <div id="googleSignInDiv" class="w-full flex justify-center"></div>
+          </div>
         </div>
       </div>
 

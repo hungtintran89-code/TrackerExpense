@@ -26,6 +26,14 @@ public class UserController {
         }
     }
 
+    public Response requestSignupVerification(HttpExchange httpExchange) {
+        return service.EmailVerificationService.requestVerification(httpExchange);
+    }
+
+    public Response confirmSignup(HttpExchange httpExchange) {
+        return service.EmailVerificationService.confirmVerification(httpExchange);
+    }
+
 
     public Response userLoginController(HttpExchange httpExchange) {
         String checkPassword = UserLoginService.login(httpExchange);
@@ -35,6 +43,15 @@ public class UserController {
         }
         return new Response(String.valueOf(checkPassword), 200);
     }
+
+    public Response googleLogin(HttpExchange httpExchange) {
+        String token = service.GoogleAuthService.verifyAndLogin(httpExchange);
+        if (token == null || token.startsWith("Error")) {
+            return new Response(token != null ? token : "Google auth failed!", 400);
+        }
+        return new Response(token, 200);
+    }
+
     public Response changePassword(HttpExchange httpExchange, User user) {
         return UserUpdateService.changePassword(httpExchange, user);
     }
