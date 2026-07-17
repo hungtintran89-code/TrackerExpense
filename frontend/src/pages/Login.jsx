@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import Modal from '../components/Modal'
-import { Wallet, Mail, Lock, Eye, EyeOff, Loader2, Key, Sparkles } from 'lucide-react'
+import { Wallet, Mail, Lock, Eye, EyeOff, Loader2, Key, Sparkles, User } from 'lucide-react'
+
 
 export default function Login() {
   const { login, googleLogin, googleOtpRequest, googleOtpConfirm, user } = useAuth()
